@@ -1,0 +1,7 @@
+
+.MuiOutlinedInput-root {
+  border-radius: 20px !important;
+}
+.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #ff6600 !important;
+}
