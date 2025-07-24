@@ -9,6 +9,7 @@ import AdminDashboard from "./pages/Admin/AdminDashboard";
 import CounterSales from "./pages/Admin/AttibuteSales/CounterSales";
 import Discounts from "./pages/Admin/Discounts";
 import OrderManagement from "./pages/Admin/OrderManagement";
+import OrderDetailAdmin from "./pages/Admin/OrderDetail";
 import ReturnManagement from "./pages/Admin/ReturnManagement";
 import Logout from "./pages/Admin/Logout";
 import AboutPage from "./pages/Website/AboutPage";
@@ -29,6 +30,8 @@ import ScrollToTop from "./components/ScrollToTop";
 import { ToastContainer } from "react-toastify";
 import HistoryOrder from "./pages/Website/HistoryOrder";
 import AddVoucher from "./pages/Website/AddVocher";
+import OrderDetail from "./pages/Website/OrderDetail";
+import PaymentSuccess from "./pages/Website/PaymentSuccess";
 function App() {
   return (
     <BrowserRouter>
@@ -44,6 +47,10 @@ function App() {
           <Route path="/website/san-pham/chi-tiet-san-pham/:id" element={<DetailProduct />} />
           <Route path="/website/dat-hang" element={<CheckOutPage />} />
           <Route path="/website/dat-hang/lich-su-dat-hang" element={<HistoryOrder />} />
+          <Route path="/website/dat-hang/lich-su-dat-hang/chi-tiet-don-hang/:orderId" element={<OrderDetail />} />
+          <Route path="/thanh-toan-thanh-cong" element={<PaymentSuccess />} />
+          <Route path="/thanh-toan-that-bai" element={<PaymentSuccess />} />
+
         </Route>
 
         {/* Routes cho AdminLayout */}
@@ -65,6 +72,8 @@ function App() {
           <Route path="/admin/san-pham-chi-tiet/:id" element={<SanPhamCtPage />} />
           <Route path="/admin/quan-ly-sp/them-san-pham" element={<AddProductWithDetailsPage />} />
           <Route path="/admin/giam-gia/them-phieu-giam-gia" element={<AddVoucher />} />
+     <Route path="/admin/orders/:id" element={<OrderDetailAdmin />} />
+
 
         </Route>
       </Routes>
