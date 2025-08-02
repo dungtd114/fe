@@ -5,15 +5,6 @@ import {
   Button,
   Typography,
   TextField,
-  IconButton,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -25,6 +16,8 @@ import {
   useMediaQuery,
   Pagination,
 } from '@mui/material';
+import IconButton from '@mui/material/IconButton';
+
 import { useTheme, styled } from '@mui/material/styles';
 import {
   Add as AddIcon,
@@ -33,6 +26,7 @@ import {
   Sync as SyncIcon,
   Search as SearchIcon,
   Close as CloseIcon,
+  ArrowBack as ArrowBackIcon, // Thay ArrowBackIcon bằng ArrowBack
 } from '@mui/icons-material';
 
 const orange = '#ff8800';
@@ -359,134 +353,117 @@ const Size = () => {
           </OrangeButton>
         </Grid>
       </Grid>
-      <TableContainer
-        component={Paper}
-        sx={{
-          borderRadius: 3,
-          boxShadow: 2,
-          border: '1px solid #ffe0b2',
-          mt: 1,
-        }}
+      <div
+        className="table-responsive"
+        style={{ borderRadius: 8, boxShadow: "0 0 8px rgba(0,0,0,0.05)" }}
       >
-        <Table size="small">
-          <TableHead>
-            <TableRow sx={{ bgcolor: orange }}>
-              <TableCell align="center" sx={{ color: white, fontWeight: 700, width: '5%', border: 0 }}>#</TableCell>
-              <TableCell sx={{ color: white, fontWeight: 700, width: '15%', border: 0 }}>MÃ KÍCH CỠ</TableCell>
-              <TableCell sx={{ color: white, fontWeight: 700, width: '15%', border: 0 }}>TÊN KÍCH CỠ</TableCell>
-              <TableCell sx={{ color: white, fontWeight: 700, width: '15%', border: 0 }}>NGÀY TẠO</TableCell>
-              <TableCell sx={{ color: white, fontWeight: 700, width: '15%', border: 0 }}>NGÀY SỬA</TableCell>
-              <TableCell sx={{ color: white, fontWeight: 700, width: '15%', border: 0 }}>MÔ TẢ</TableCell>
-              <TableCell align="center" sx={{ color: white, fontWeight: 700, width: '15%', border: 0 }}>TRẠNG THÁI</TableCell>
-              <TableCell align="center" sx={{ color: white, fontWeight: 700, width: '20%', border: 0 }}>HÀNH ĐỘNG</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+        <table className="table table-hover" style={{ textAlign: "center", fontSize: "0.85rem" }}>
+          <thead style={{ backgroundColor: orange, color: white }}>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">MÃ KÍCH CỠ</th>
+              <th scope="col">TÊN KÍCH CỠ</th>
+              <th scope="col" className="d-none d-md-table-cell">NGÀY TẠO</th>
+              <th scope="col" className="d-none d-md-table-cell">NGÀY SỬA</th>
+              <th scope="col" className="d-none d-lg-table-cell">MÔ TẢ</th>
+              <th scope="col">TRẠNG THÁI</th>
+              <th scope="col">HÀNH ĐỘNG</th>
+            </tr>
+          </thead>
+          <tbody>
             {Array.isArray(sizes) && sizes.length > 0 ? (
               sizes.map((size, index) => (
-                <TableRow
-                  key={size.id}
-                  hover
-                  sx={{
-                    transition: 'background 0.2s',
-                    '&:hover': { backgroundColor: '#fffaf3' },
-                    borderBottom: '1px solid #ffe0b2',
-                  }}
-                >
-                  <TableCell align="center" sx={{ fontWeight: 600, color: black, border: 0 }}>
-                    {index + 1 + currentPage * pageSize}
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: black, letterSpacing: 1, border: 0 }}>
-                    {size.ma}
-                  </TableCell>
-                  <TableCell sx={{ color: black, fontWeight: 500, border: 0 }}>
-                    {size.ten}
-                  </TableCell>
-                  <TableCell sx={{ color: black, border: 0 }}>
-                    {size.ngayTao?.slice(0, 10) || '-'}
-                  </TableCell>
-                  <TableCell sx={{ color: black, border: 0 }}>
-                    {size.ngaySua?.slice(0, 10) || '-'}
-                  </TableCell>
-                  <TableCell sx={{ color: black, border: 0 }}>
-                    {size.moTa || '-'}
-                  </TableCell>
-                  <TableCell align="center" sx={{ border: 0 }}>
-                    <Chip
-                      label={size.trangThai === 1 ? 'Đang Hoạt Động' : 'Ngừng Hoạt Động'}
-                      sx={{
-                        bgcolor: size.trangThai === 1 ? '#a3e635' : '#6c757d',
-                        color: size.trangThai === 1 ? '#1a2e05' : white,
-                        fontWeight: 600,
-                        px: 1.5,
-                        fontSize: 14,
-                        borderRadius: '16px',
+                <tr key={size.id}>
+                  <th scope="row">{index + 1 + currentPage * pageSize}</th>
+                  <td style={{ fontWeight: 600 }}>{size.ma}</td>
+                  <td style={{ fontWeight: 500 }}>{size.ten}</td>
+                  <td className="d-none d-md-table-cell">{size.ngayTao?.slice(0, 10) || '-'}</td>
+                  <td className="d-none d-md-table-cell">{size.ngaySua?.slice(0, 10) || '-'}</td>
+                  <td className="d-none d-lg-table-cell">{size.moTa || '-'}</td>
+                  <td style={{ width: 160 }}>
+                    <span
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 12,
+                        fontSize: "0.85rem",
+                        fontWeight: 500,
+                        backgroundColor: size.trangThai === 1 ? "#d1e7dd" : "#e2e3e5",
+                        color: size.trangThai === 1 ? "#0f5132" : "#444",
                       }}
-                    />
-                  </TableCell>
-                  <TableCell align="center" sx={{ border: 0 }}>
-                    <Box display="flex" justifyContent="center" gap={0.5}>
+                    >
+                      {size.trangThai === 1 ? 'Đang Hoạt Động' : 'Ngừng Hoạt Động'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="d-flex justify-content-center gap-1">
                       <IconButton
-                        sx={{
-                          color: '#1976d2',
-                          bgcolor: '#f4f8fd',
-                          borderRadius: '50%',
-                          width: 30,
-                          height: 30,
-                          transition: 'all 0.2s',
-                          '&:hover': { bgcolor: '#e3f2fd', color: '#0d47a1' },
-                        }}
                         onClick={() => handleViewOrEdit(size, true)}
-                        size="small"
+                        sx={{
+                          bgcolor: '#212529',
+                          color: '#fff',
+                          borderRadius: 1.5,
+                          padding: '6px 12px',
+                          fontSize: '0.85rem',
+                          '&:hover': {
+                            bgcolor: '#343a40',
+                          },
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
                       >
-                        <VisibilityIcon fontSize="small" />
+                        <VisibilityIcon fontSize="small" sx={{ mr: 0.5 }} />
+                        <span className="d-none d-md-inline">Xem</span>
                       </IconButton>
                       <IconButton
-                        sx={{
-                          color: '#ffca28',
-                          bgcolor: '#fff7f0',
-                          borderRadius: '50%',
-                          width: 30,
-                          height: 30,
-                          transition: 'all 0.2s',
-                          '&:hover': { bgcolor: '#ffe0b2', color: '#ff6f00' },
-                        }}
                         onClick={() => handleViewOrEdit(size, false)}
-                        size="small"
+                        sx={{
+                          bgcolor: '#ffca28',
+                          color: '#fff',
+                          borderRadius: 1.5,
+                          padding: '6px 12px',
+                          fontSize: '0.85rem',
+                          '&:hover': {
+                            bgcolor: '#ffb300',
+                          },
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
                       >
-                        <EditIcon fontSize="small" />
+                        <EditIcon fontSize="small" sx={{ mr: 0.5 }} />
+                        <span className="d-none d-md-inline">Sửa</span>
                       </IconButton>
                       <IconButton
-                        sx={{
-                          color: '#e53935',
-                          bgcolor: '#fff6f6',
-                          borderRadius: '50%',
-                          width: 30,
-                          height: 30,
-                          transition: 'all 0.2s',
-                          '&:hover': { bgcolor: '#ffeaea', color: '#b71c1c' },
-                        }}
                         onClick={() => setConfirmModal({ open: true, id: size.id })}
-                        size="small"
+                        sx={{
+                          bgcolor: size.trangThai === 1 ? '#dc3545' : '#28a745',
+                          color: '#fff',
+                          borderRadius: 1.5,
+                          padding: '6px 12px',
+                          fontSize: '0.85rem',
+                          '&:hover': {
+                            bgcolor: size.trangThai === 1 ? '#c82333' : '#218838',
+                          },
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
                       >
-                        <SyncIcon fontSize="small" />
+                        <SyncIcon fontSize="small" sx={{ mr: 0.5 }} />
+                        <span className="d-none d-md-inline">{size.trangThai === 1 ? 'Ngưng' : 'Hoạt động'}</span>
                       </IconButton>
-                    </Box>
-                  </TableCell>
-                </TableRow>
+                    </div>
+                  </td>
+                </tr>
               ))
             ) : (
-              <TableRow>
-                <TableCell colSpan={8} align="center">
-                  <Typography color="text.secondary" fontSize={18}>
-                    {searchTerm ? `Không tìm thấy kích cỡ với tên hoặc mã "${searchTerm}"` : 'Không có kích cỡ nào'}
-                  </Typography>
-                </TableCell>
-              </TableRow>
+              <tr>
+                <td colSpan="8" className="text-center text-muted py-4">
+                  {searchTerm ? `Không tìm thấy kích cỡ với tên hoặc mã "${searchTerm}"` : 'Không có kích cỡ nào'}
+                </td>
+              </tr>
             )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+          </tbody>
+        </table>
+      </div>
       <Box display="flex" justifyContent="space-between" alignItems="center" mt={3} flexWrap="wrap" gap={2}>
         <Pagination
           count={totalPages}

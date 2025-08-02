@@ -28,10 +28,13 @@ const CounterSales = () => {
   const [connectError, setConnectError] = useState(false);
   const [searchSdt, setSearchSdt] = useState('');
   const [showSearchInput, setShowSearchInput] = useState(false);
-
+  const [xacNhanKhachHangMap, setXacNhanKhachHangMap] = useState({});
   const [alertMessage, setAlertMessage] = useState('');
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertSeverity, setAlertSeverity] = useState('success');
+  const [daXacNhanKhachHang, setDaXacNhanKhachHang] = useState(false);
+  const [diaChiNhanIdMap, setDiaChiNhanIdMap] = useState({});
+
 
   const showAlert = (message) => {
     setAlertMessage(message);
@@ -60,17 +63,25 @@ const CounterSales = () => {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmLabel, setConfirmLabel] = useState('Xác nhận');
+  const [confirmColor, setConfirmColor] = useState('error');
   const [confirmTitle, setConfirmTitle] = useState('');
   const [onConfirmAction, setOnConfirmAction] = useState(() => () => { });
   const [showVnpayQR, setShowVnpayQR] = useState(false);
   const [vnpayUrl, setVnpayUrl] = useState('');
 
-  const showConfirmDialog = (message, title, onConfirm) => {
-    setConfirmMessage(message);
+  const showConfirmDialog = ({ title, message, onConfirm, label = 'Xác nhận', color = 'error' }) => {
     setConfirmTitle(title);
-    setOnConfirmAction(() => onConfirm);
+    setConfirmMessage(message);
+    setConfirmLabel(label);
+    setConfirmColor(color);
+    setOnConfirmAction(() => () => {
+      onConfirm();
+      setConfirmOpen(false); 
+    });
     setConfirmOpen(true);
   };
+
 
   const handleConfirm = () => {
     onConfirmAction();
@@ -79,13 +90,16 @@ const CounterSales = () => {
 
 
   const fetchHoaDons = async () => {
+    console.log("Đang gọi fetchHoaDons...");
     try {
       const result = await getHoaDonByTrangThai(6); // Trạng thái 6 là "Đang xử lý"
+      console.log("Kết quả gọi API:", result);
       const list = result.content || [];
       setHoaDons(list);
       if (list.length > 0) setActiveTab(list[0].id);
       setConnectError(false);
     } catch (err) {
+      console.error("❌ Chi tiết lỗi từ server:", err.response);
       setConnectError(true);
       console.error('Lỗi khi load hóa đơn:', err.message);
     }
@@ -262,16 +276,17 @@ const CounterSales = () => {
   };
 
   const handleDeleteHoaDon = async (hoaDonId) => {
-    showConfirmDialog(
-      'Bạn có chắc muốn xoá hoá đơn này?',
-      'Xác nhận xoá',
-      async () => {
+    showConfirmDialog({
+      title: 'Xác nhận xoá',
+      message: 'Bạn có chắc muốn xoá hoá đơn này?',
+      label: 'Xoá',
+      color: 'error',
+      onConfirm: async () => {
         try {
           await deleteHD(hoaDonId); // API soft delete hoặc chuyển trạng thái
           setHoaDons(prev => prev.filter(hd => hd.id !== hoaDonId));
           setActiveTab(prev => {
             if (prev === hoaDonId && hoaDons.length > 1) {
-              // Nếu xóa tab đang mở, chuyển sang tab đầu tiên còn lại
               const remaining = hoaDons.filter(hd => hd.id !== hoaDonId);
               return remaining[0]?.id || null;
             }
@@ -287,15 +302,17 @@ const CounterSales = () => {
           setConnectError(true);
         }
       }
-    );
+    });
   };
 
 
   const handleDeleteProduct = async (sp, hoaDonId) => {
-    showConfirmDialog(
-      "Bạn có chắc muốn xoá sản phẩm này khỏi hoá đơn?",
-      "Xoá sản phẩm",
-      async () => {
+    showConfirmDialog({
+      title: 'Xoá sản phẩm',
+      message: 'Bạn có chắc muốn xoá sản phẩm này khỏi hoá đơn?',
+      label: 'Xoá',
+      color: 'error',
+      onConfirm: async () => {
         try {
           await deleteHDCT(sp.id);
           const result = await getHoaDonCTByHoaDonId(hoaDonId);
@@ -309,7 +326,8 @@ const CounterSales = () => {
           setConnectError(true);
         }
       }
-    );
+    });
+
   };
 
   // Hàm lấy số lượng tồn kho thực tế từ API cho từng sản phẩm chi tiết
@@ -400,19 +418,24 @@ const CounterSales = () => {
     }
   };
 
-  const handleUpdateHoaDonWithKhachHang = async (hoaDonId, khachHang, hinhThucNhanHang = 0) => {
+  const handleUpdateHoaDonWithKhachHang = async (hoaDonId, khachHang, hinhThucNhanHang = 0, diaChiNhanId = null) => {
     try {
-      console.log('Gửi lên API:', { hoaDonId, khachHangId: khachHang?.id, hinhThucNhanHang });
-      await updateHDCTWithKH(hoaDonId, khachHang.id, hinhThucNhanHang);
+      await updateHDCTWithKH(hoaDonId, khachHang.id, hinhThucNhanHang, diaChiNhanId);
       showAlert('Cập nhật khách hàng cho hóa đơn thành công!');
       setAlertSeverity('success');
       setAlertOpen(true);
+      setXacNhanKhachHangMap(prev => ({
+        ...prev,
+        [hoaDonId]: true
+      }));
     } catch (err) {
       showAlert('Cập nhật khách hàng thất bại: ' + err.message);
       setAlertSeverity('error');
       setAlertOpen(true);
     }
   };
+
+
 
   const handleXacNhanDonHang = async (hoaDonId) => {
     const sanPhams = sanPhamsMap[hoaDonId] || [];
@@ -660,6 +683,9 @@ const CounterSales = () => {
                     setHinhThucNhanHang={val =>
                       setHinhThucNhanHangMap(prev => ({ ...prev, [hd.id]: val }))
                     }
+                    daXacNhan={xacNhanKhachHangMap[hd.id] || false}
+                    setXacNhanKhachHangMap={setXacNhanKhachHangMap}
+                    handleXacNhanKhachHang={handleUpdateHoaDonWithKhachHang}
                     trangThai={trangThaiHoaDonMap[hd.id] || 0}
                     setTrangThai={val =>
                       setTrangThaiHoaDonMap(prev => ({ ...prev, [hd.id]: val }))
@@ -668,7 +694,13 @@ const CounterSales = () => {
                     setMoTa={val =>
                       setMoTaHoaDonMap(prev => ({ ...prev, [hd.id]: val }))
                     }
+                    diaChiNhanId={diaChiNhanIdMap[hd.id] || null}
+                    setDiaChiNhanId={val =>
+                      setDiaChiNhanIdMap(prev => ({ ...prev, [hd.id]: val }))
+                    }
+                    
                   />
+
 
 
                   <h6 className="fw-bold">Thông tin thanh toán</h6>
@@ -732,9 +764,12 @@ const CounterSales = () => {
                       className="btn btn-success mt-3 w-100"
                       onClick={() => handleXacNhanDonHang(hd.id)}
                       disabled={
-                        hinhThucThanhToanMap[hd.id] !== 3 && (
-                          !tienKhachDuaMap[hd.id] ||
-                          tienKhachDuaMap[hd.id] < calculateTotal(hd.id)
+                        !xacNhanKhachHangMap[hd.id] || (
+                          hinhThucThanhToanMap[hd.id] !== 3 &&
+                          (
+                            !tienKhachDuaMap[hd.id] ||
+                            tienKhachDuaMap[hd.id] < calculateTotal(hd.id)
+                          )
                         )
                       }
 
@@ -887,6 +922,9 @@ const CounterSales = () => {
                   message={confirmMessage}
                   onCancel={() => setConfirmOpen(false)}
                   onConfirm={handleConfirm}
+                  confirmLabel={confirmLabel}
+                  confirmColor={confirmColor}
+                  confirmVariant="contained"
                 />
 
               </div>

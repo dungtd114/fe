@@ -123,6 +123,7 @@ const SanPhamCtPage = () => {
     hinhAnhMauSacId: null,
     ma: '',
     giaNhap: '',
+    giaBanGoc: '',
     giaBan: '',
     soLuong: '',
     moTa: '',
@@ -284,23 +285,34 @@ const SanPhamCtPage = () => {
     if (!formData.kichThuocId) errors.kichThuocId = 'Kích thước không được để trống';
     if (!formData.xuatXuId) errors.xuatXuId = 'Xuất xứ không được để trống';
     if (!formData.chatLieuId) errors.chatLieuId = 'Chất liệu không được để trống';
+    if (formData.giaBanGoc === '' || isNaN(Number(formData.giaBanGoc)) || Number(formData.giaBanGoc) <= 0)
+      errors.giaBanGoc = 'Giá bán gốc phải lớn hơn 0';
     if (formData.giaBan === '' || isNaN(Number(formData.giaBan)) || Number(formData.giaBan) <= 0)
       errors.giaBan = 'Giá bán phải lớn hơn 0';
-    if (formData.soLuong === '' || isNaN(Number(formData.soLuong)) || Number(formData.soLuong) < 0)
-      errors.soLuong = 'Số lượng không được nhỏ hơn 0';
     if (formData.giaNhap && (isNaN(Number(formData.giaNhap)) || Number(formData.giaNhap) < 0))
       errors.giaNhap = 'Giá nhập không được nhỏ hơn 0';
     if (formData.moTa && formData.moTa.length > 255) errors.moTa = 'Mô tả không được vượt quá 255 ký tự';
     if (!formData.ma.trim()) errors.ma = 'Mã sản phẩm chi tiết không được để trống';
+    if (Number(formData.soLuong) < 0) errors.soLuong = 'Số lượng không được nhỏ hơn 0';
     if (Number(formData.soLuong) > 0 && formData.trangThai === 0)
       errors.trangThai = 'Trạng thái Hết Hàng chỉ áp dụng khi số lượng bằng 0';
-    if (formData.mauSacId && formData.thuongHieuId && formData.kichThuocId) {
-      const key = `${formData.mauSacId}-${formData.thuongHieuId}-${formData.kichThuocId}`;
+    // Kiểm tra mã trùng khi cập nhật
+    if (selectedSanPhamCt && formData.ma !== selectedSanPhamCt.ma) {
+      const existingMa = sanPhamCts.find((spct) => spct.ma === formData.ma && spct.id !== selectedSanPhamCt.id);
+      if (existingMa) {
+        errors.ma = 'Mã sản phẩm chi tiết đã tồn tại';
+      }
+    }
+    // Kiểm tra tổ hợp thuộc tính trùng lặp
+    if (formData.sanPhamId && formData.mauSacId && formData.thuongHieuId && formData.kichThuocId && formData.xuatXuId && formData.chatLieuId) {
+      const key = `${formData.sanPhamId}-${formData.mauSacId}-${formData.thuongHieuId}-${formData.kichThuocId}-${formData.xuatXuId}-${formData.chatLieuId}`;
       const duplicates = sanPhamCts
         .filter((spct) => spct.id !== (selectedSanPhamCt?.id || null))
-        .filter((spct) => `${spct.mauSacId}-${spct.thuongHieuId}-${spct.kichThuocId}` === key);
-      if (duplicates.length > 0) {
-        errors.combination = 'Sản phẩm chi tiết này đã tồn tại';
+        .find((spct) =>
+          `${spct.sanPhamId}-${spct.mauSacId}-${spct.thuongHieuId}-${spct.kichThuocId}-${spct.xuatXuId}-${spct.chatLieuId}` === key
+        );
+      if (duplicates) {
+        errors.combination = 'Sản phẩm chi tiết với tổ hợp thuộc tính này đã tồn tại';
       }
     }
     setFormErrors(errors);
@@ -316,12 +328,16 @@ const SanPhamCtPage = () => {
       xuatXuId: null,
       chatLieuId: null,
       hinhAnhMauSacId: null,
-      ma: `CT-${crypto.randomUUID().substring(0, 8)}`,
+      ma: `SPCT-${crypto.randomUUID().substring(0, 8)}`, // Sử dụng tiền tố SPCT- như trong service
       giaNhap: '',
-      giaBan: '',
+      giaBanGoc: '',
+      giaBan: '', // Giá bán sẽ được gán bằng giá gốc ở handleSave
       soLuong: '',
       moTa: '',
-      trangThai: 1,
+      trangThai: 1, // Mặc định trạng thái là Đang Bán
+      ngayTao: new Date().toISOString(),
+      ngaySua: null,
+      ngayXoa: null,
       imagePreview: null,
     });
     setFormErrors({});
@@ -342,12 +358,16 @@ const SanPhamCtPage = () => {
       xuatXuId: sanPhamCt.xuatXuId || null,
       chatLieuId: sanPhamCt.chatLieuId || null,
       hinhAnhMauSacId: sanPhamCt.hinhAnhMauSacId || null,
-      ma: sanPhamCt.ma || `CT-${crypto.randomUUID().substring(0, 8)}`,
+      ma: sanPhamCt.ma || `SPCT-${crypto.randomUUID().substring(0, 8)}`,
       giaNhap: sanPhamCt.giaNhap || '',
-      giaBan: sanPhamCt.giaBan || '',
+      giaBanGoc: sanPhamCt.giaBanGoc || '',
+      giaBan: sanPhamCt.giaBan || sanPhamCt.giaBanGoc || '', // Đồng bộ với service: giá bán bằng giá gốc nếu không có giảm giá
       soLuong: sanPhamCt.soLuong || '',
       moTa: sanPhamCt.moTa || '',
       trangThai: sanPhamCt.trangThai || 1,
+      ngayTao: sanPhamCt.ngayTao || new Date().toISOString(),
+      ngaySua: sanPhamCt.ngaySua || new Date().toISOString(),
+      ngayXoa: sanPhamCt.ngayXoa || null,
       imagePreview: image ? image.hinhAnh : null,
     });
     if (!image && sanPhamCt.mauSacId) {
@@ -360,64 +380,52 @@ const SanPhamCtPage = () => {
     setIsModalOpen(true);
   };
 
-const handleImageUpload = async (e) => {
-  const file = e.target.files[0];
-  if (!file) {
-    toast.error('Vui lòng chọn một file hình ảnh');
-    return;
-  }
-  if (!formData.mauSacId) {
-    toast.error('Vui lòng chọn màu sắc trước khi tải ảnh');
-    return;
-  }
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) {
+      toast.error('Vui lòng chọn một file hình ảnh');
+      return;
+    }
+    if (!formData.mauSacId) {
+      toast.error('Vui lòng chọn màu sắc trước khi tải ảnh');
+      return;
+    }
 
-  try {
-    setImageLoading(true); // Bật loading để cải thiện UX
-    const response = await uploadHinhAnhMauSac(file, formData.mauSacId);
-    
-    // Chuẩn hóa URL ảnh
-    const imageUrl = response.hinhAnh.startsWith('/uploads/')
-      ? `${STATIC_URL}${response.hinhAnh}`
-      : `${STATIC_URL}/uploads/${response.hinhAnh}`;
-
-    // Tạo đối tượng ảnh mới
-    const newImage = {
-      id: response.id,
-      hinhAnh: imageUrl,
-      mauSacId: formData.mauSacId,
-      tenMauSac: dropdownData.mauSac.find((ms) => ms.id === formData.mauSacId)?.ten || '',
-    };
-
-    // Cập nhật dropdownData.hinhAnhMauSac với ảnh mới
-    setDropdownData((prev) => ({
-      ...prev,
-      hinhAnhMauSac: [
-        ...prev.hinhAnhMauSac.filter((img) => img.id !== newImage.id), // Loại bỏ ảnh trùng nếu có
-        newImage, // Thêm ảnh mới
-      ],
-    }));
-
-    // Cập nhật formData với ảnh vừa tải lên
-    setFormData({
-      ...formData,
-      hinhAnhMauSacId: response.id,
-      imagePreview: imageUrl,
-    });
-
-    // Cập nhật imageCache để đồng bộ
-    imageCache.set(formData.mauSacId, [
-      ...(imageCache.get(formData.mauSacId) || []).filter((img) => img.id !== newImage.id),
-      newImage,
-    ]);
-
-    toast.success('Tải ảnh lên thành công');
-  } catch (err) {
-    toast.error(`Tải ảnh thất bại: ${err.message}`);
-  } finally {
-    setImageLoading(false); // Tắt loading
-  }
-};
-
+    try {
+      setImageLoading(true);
+      const response = await uploadHinhAnhMauSac(file, formData.mauSacId);
+      const imageUrl = response.hinhAnh.startsWith('/uploads/')
+        ? `${STATIC_URL}${response.hinhAnh}`
+        : `${STATIC_URL}/uploads/${response.hinhAnh}`;
+      const newImage = {
+        id: response.id,
+        hinhAnh: imageUrl,
+        mauSacId: formData.mauSacId,
+        tenMauSac: dropdownData.mauSac.find((ms) => ms.id === formData.mauSacId)?.ten || '',
+      };
+      setDropdownData((prev) => ({
+        ...prev,
+        hinhAnhMauSac: [
+          ...prev.hinhAnhMauSac.filter((img) => img.id !== newImage.id),
+          newImage,
+        ],
+      }));
+      setFormData({
+        ...formData,
+        hinhAnhMauSacId: response.id,
+        imagePreview: imageUrl,
+      });
+      imageCache.set(formData.mauSacId, [
+        ...(imageCache.get(formData.mauSacId) || []).filter((img) => img.id !== newImage.id),
+        newImage,
+      ]);
+      toast.success('Tải ảnh lên thành công');
+    } catch (err) {
+      toast.error(`Tải ảnh thất bại: ${err.message}`);
+    } finally {
+      setImageLoading(false);
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -434,14 +442,15 @@ const handleImageUpload = async (e) => {
       setLoading(true);
       let updatedTrangThai = formData.trangThai;
       if (Number(formData.soLuong) === 0 && formData.trangThai !== 2) {
-        updatedTrangThai = 0;
+        updatedTrangThai = 0; // Hết Hàng nếu số lượng = 0
       } else if (Number(formData.soLuong) > 0 && formData.trangThai === 0) {
-        updatedTrangThai = 1;
+        updatedTrangThai = 1; // Đang Bán nếu số lượng > 0
       }
       const sanPhamCtToSave = {
         ...formData,
         giaNhap: formData.giaNhap === '' ? null : Number(formData.giaNhap),
-        giaBan: Number(formData.giaBan),
+        giaBanGoc: Number(formData.giaBanGoc),
+        giaBan: Number(formData.giaBan || formData.giaBanGoc), // Đồng bộ với service: giá bán bằng giá gốc nếu không nhập
         soLuong: Number(formData.soLuong),
         trangThai: updatedTrangThai,
         ngayTao: selectedSanPhamCt ? formData.ngayTao : new Date().toISOString(),
@@ -461,6 +470,8 @@ const handleImageUpload = async (e) => {
       console.error('API Error:', err);
       const errorMessage = err.response?.data?.error || err.message || 'Thao tác thất bại, vui lòng kiểm tra lại';
       toast.error(errorMessage);
+      setAlertMessage(errorMessage);
+      setAlertType('error');
     } finally {
       setLoading(false);
     }
@@ -754,7 +765,8 @@ const handleImageUpload = async (e) => {
               <TableCell sx={{ color: white, fontWeight: 700, fontSize: '0.9rem', width: '8%', p: 1 }}>T.HIỆU</TableCell>
               <TableCell sx={{ color: white, fontWeight: 700, fontSize: '0.9rem', width: '8%', p: 1 }}>X.XỨ</TableCell>
               <TableCell sx={{ color: white, fontWeight: 700, fontSize: '0.9rem', width: '8%', p: 1 }}>C.LIỆU</TableCell>
-              <TableCell sx={{ color: white, fontWeight: 700, fontSize: '0.9rem', width: '10%', p: 1 }}>GIÁ</TableCell>
+              <TableCell sx={{ color: white, fontWeight: 700, fontSize: '0.9rem', width: '10%', p: 1 }}>GIÁ GỐC</TableCell>
+              <TableCell sx={{ color: white, fontWeight: 700, fontSize: '0.9rem', width: '10%', p: 1 }}>GIÁ BÁN</TableCell>
               <TableCell sx={{ color: white, fontWeight: 700, fontSize: '0.9rem', width: '6%', p: 1 }}>SL</TableCell>
               <TableCell align="center" sx={{ color: white, fontWeight: 700, fontSize: '0.9rem', width: '10%', p: 1 }}>T.THAI</TableCell>
               <TableCell align="center" sx={{ color: white, fontWeight: 700, fontSize: '0.9rem', width: '10%', p: 1 }}>H.ĐỘNG</TableCell>
@@ -819,6 +831,9 @@ const handleImageUpload = async (e) => {
                     <TableCell sx={{ color: black, fontSize: '0.9rem', p: 1 }}>{spct.tenThuongHieu || 'N/A'}</TableCell>
                     <TableCell sx={{ color: black, fontSize: '0.9rem', p: 1 }}>{spct.tenXuatXu || 'N/A'}</TableCell>
                     <TableCell sx={{ color: black, fontSize: '0.9rem', p: 1 }}>{spct.tenChatLieu || 'N/A'}</TableCell>
+                    <TableCell sx={{ color: black, fontSize: '0.9rem', p: 1 }}>
+                      {spct.giaBanGoc ? spct.giaBanGoc.toLocaleString('vi-VN') : 'N/A'}
+                    </TableCell>
                     <TableCell sx={{ color: black, fontSize: '0.9rem', p: 1 }}>
                       {spct.giaBan ? spct.giaBan.toLocaleString('vi-VN') : 'N/A'}
                     </TableCell>
@@ -902,7 +917,7 @@ const handleImageUpload = async (e) => {
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={13} align="center">
+                <TableCell colSpan={14} align="center">
                   <Typography color="text.secondary" fontSize="0.9rem">
                     {searchTerm
                       ? `Không tìm thấy sản phẩm chi tiết với mã "${searchTerm}"`
@@ -1046,6 +1061,35 @@ const handleImageUpload = async (e) => {
                     fullWidth
                     error={!!formErrors.giaNhap}
                     helperText={formErrors.giaNhap}
+                    InputProps={{ readOnly: isViewMode }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        bgcolor: white,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                        '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: orange },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: orange, borderWidth: '2px' },
+                        fontSize: '0.9rem',
+                      },
+                      '& .MuiInputLabel-root': {
+                        fontWeight: 600,
+                        color: black,
+                        fontSize: '0.95rem',
+                        '&.Mui-focused': { color: orange },
+                      },
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="Giá Bán Gốc"
+                    type="number"
+                    value={formData.giaBanGoc}
+                    onChange={(e) => !isViewMode && setFormData({ ...formData, giaBanGoc: e.target.value, giaBan: e.target.value })}
+                    fullWidth
+                    required={!isViewMode}
+                    error={!!formErrors.giaBanGoc}
+                    helperText={formErrors.giaBanGoc}
                     InputProps={{ readOnly: isViewMode }}
                     sx={{
                       '& .MuiOutlinedInput-root': {
@@ -1526,5 +1570,4 @@ const handleImageUpload = async (e) => {
     </Box>
   );
 };
-
 export default SanPhamCtPage;
