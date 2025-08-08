@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSearch, faSyncAlt, faPlus, faTimes } from '@fortawesome/free-solid-svg-icons';
-import { getKHBySdt, addNguoiDung, addDiaChiNhan, getDiaChiNhanByNguoiDungId} from '../../../services/Admin/CounterSales/NguoiDungSAdmService';
+import { getKHBySdt, addNguoiDung, addDiaChiNhan, getDiaChiNhanByNguoiDungId,getKHByEmail} from '../../../services/Admin/CounterSales/NguoiDungSAdmService';
 import CustomAlert from './CustomAlert';
 import CustomConfirm from './CustomConfirm';
 
@@ -280,8 +280,12 @@ const Client = ({
 
 
     const handleAddNewCustomer = async () => {
-        if (!newCustomer.hoTen || !newCustomer.soDienThoai) {
-            showAlert('Vui lòng nhập họ tên và số điện thoại');
+        if (
+            !newCustomer.hoTen || !newCustomer.email || !newCustomer.diaChi || !newCustomer.namSinh ||
+            !newCustomer.soDienThoai || !newCustomer.gioiTinh ||
+            selectedProvince === "" || selectedDistrict === "" || selectedWard === ""
+        ) {
+            showAlert('Vui lòng nhập đầy đủ thông tin');
             setAlertSeverity('warning');
             setAlertOpen(true);
             return;
@@ -311,7 +315,7 @@ const Client = ({
                     tinhNguoiDung: provinces.find(p => p.code == selectedProvince)?.name || '',
                     huyenNguoiDung: districts.find(d => d.code == selectedDistrict)?.name || '',
                     xaNguoiDung: wards.find(w => w.code == selectedWard)?.name || '',
-                    namSinh: newCustomer.namSinh ? parseInt(newCustomer.namSinh) : null,
+                    namSinh: newCustomer.namSinh,
                     gioiTinh: parseInt(newCustomer.gioiTinh),
                     idChucVu: 3,
                     tenNguoiNhan: newCustomer.hoTen,
@@ -357,7 +361,17 @@ const Client = ({
                     setKhachHangMap(prev => ({ ...prev, [hoaDonId]: fullCustomerData }));
                 }
             } catch (addError) {
-                showAlert(addError.response?.data?.message || 'Lỗi khi thêm khách hàng');
+                try {
+                    const existedEmailUser = await getKHByEmail(newCustomer.email);
+                    if (existedEmailUser) {
+                        showAlert('Email đã tồn tại trong hệ thống. Vui lòng dùng email khác.');
+                    } else {
+                        showAlert(addError.response?.data?.message || 'Lỗi khi thêm khách hàng');
+                    }
+                } catch (emailCheckError) {
+                    // Nếu không gọi được getKHByEmail thì fallback
+                    showAlert(addError.response?.data?.message || 'Lỗi khi thêm khách hàng');
+                }                    
                 setAlertSeverity('error');
                 setAlertOpen(true);
             } finally {
@@ -648,8 +662,8 @@ const Client = ({
                                         <input type="email" name="email" className="form-control" value={newCustomer.email} onChange={handleInputChange} />
                                     </div>
                                     <div className="col-md-6 mb-2">
-                                        <label className="form-label">Năm sinh</label>
-                                        <input type="number" name="namSinh" className="form-control" value={newCustomer.namSinh} onChange={handleInputChange} />
+                                        <label className="form-label">Ngày sinh</label>
+                                        <input type="date" name="namSinh" className="form-control" value={newCustomer.namSinh} onChange={handleInputChange} />
                                     </div>
                                     <div className="col-md-6 mb-2">
                                         <label className="form-label">Giới tính</label>
@@ -660,7 +674,7 @@ const Client = ({
                                     </div>
                                     <div className="col-md-12 mb-2">
                                         <label className="form-label">Địa chỉ (Số nhà, tên đường)</label>
-                                        <input type="text" name="diaChi" className="form-control" value={newCustomer.diaChi} onChange={handleInputChange} />
+                                        <input type="text" name="diaChi" className="form-control" value={newCustomer.diaChi} onChange={handleInputChange} required />
                                     </div>
                                     <div className="col-md-4 mb-2">
                                         <label className="form-label">Tỉnh/Thành phố</label>

@@ -23,6 +23,18 @@ export const getKHBySdt = async (sdt) => {
     }
 };
 
+export const getKHByEmail = async (sdt) => {
+    try {
+        const response = await axiosInstance.get(`/email/${email}`);
+        console.log(response.data); // kiểm tra dữ liệu
+        return Array.isArray(response.data) ? response.data[0] : response.data;
+    } catch (error) {
+        throw new Error(
+            error.response?.data?.error || 'Không tìm thấy khách hàng theo email'
+        );
+    }
+};
+
 //Hàm gọi API tìm kiếm User theo id
 export const searchUserById = async (id) => {
     try {

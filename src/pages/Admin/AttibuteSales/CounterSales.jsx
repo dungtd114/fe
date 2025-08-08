@@ -17,6 +17,7 @@ import { submitVNPayOrder } from "../../../services/Website/OrderApi";
 import QRCode from "react-qr-code";
 
 
+
 const CounterSales = () => {
   const [hoaDons, setHoaDons] = useState([]);
   const [sanPhamsMap, setSanPhamsMap] = useState({});
@@ -77,7 +78,7 @@ const CounterSales = () => {
     setConfirmColor(color);
     setOnConfirmAction(() => () => {
       onConfirm();
-      setConfirmOpen(false); 
+      setConfirmOpen(false);
     });
     setConfirmOpen(true);
   };
@@ -698,7 +699,7 @@ const CounterSales = () => {
                     setDiaChiNhanId={val =>
                       setDiaChiNhanIdMap(prev => ({ ...prev, [hd.id]: val }))
                     }
-                    
+
                   />
 
 
