@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSearch, faSyncAlt, faPlus, faTimes } from '@fortawesome/free-solid-svg-icons';
-import { getKHBySdt, addNguoiDung, addDiaChiNhan, getDiaChiNhanByNguoiDungId,getKHByEmail} from '../../../services/Admin/CounterSales/NguoiDungSAdmService';
-import CustomAlert from './CustomAlert';
-import CustomConfirm from './CustomConfirm';
-
+import { getKHBySdt, addNguoiDung, addDiaChiNhan, getDiaChiNhanByNguoiDungId, searchUserById } from '../../../services/Admin/CounterSales/NguoiDungSAdmService';
+import Swal from 'sweetalert2';
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 const API_PROVINCE_URL = "https://provinces.open-api.vn/api/";
 
 const Client = ({
@@ -13,64 +13,28 @@ const Client = ({
     setKhachHangMap,
     daXacNhan,
     handleXacNhanKhachHang,
-    setXacNhanKhachHangMap
+    setXacNhanKhachHangMap,
+    hinhThucNhanHang,
+    setHinhThucNhanHang,
+    setSoDienThoai
 }) => {
     const [loading, setLoading] = useState(false);
     const [khachHang, setKhachHang] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showSearchInput, setShowSearchInput] = useState(true); // Default to show search
     const [searchSdt, setSearchSdt] = useState('');
-    const [hinhThucNhanHang, setHinhThucNhanHang] = useState(0);
     const [diaChiNhanId, setDiaChiNhanId] = useState(null);
-    const [confirmOpen, setConfirmOpen] = useState(false);
-    const [confirmMessage, setConfirmMessage] = useState('');
-    const [confirmLabel, setConfirmLabel] = useState('Xác nhận');
-    const [confirmColor, setConfirmColor] = useState('error');
-    const [confirmTitle, setConfirmTitle] = useState('');
-    const [onConfirmAction, setOnConfirmAction] = useState(() => () => { });
-    
+    const [daXacNhanState, setDaXacNhanState] = useState(false);
     const [showDiaChiModal, setShowDiaChiModal] = useState(false);
     const [newDiaChi, setNewDiaChi] = useState({
         tenNguoiNhan: '',
         soDienThoai: '',
+        soNha: '',
         diaChi: '',
         xa: '',
         huyen: '',
         tinh: ''
-    });
-
-    const showConfirmDialog = ({ title, message, onConfirm, label = 'Xác nhận', color = 'error' }) => {
-        setConfirmTitle(title);
-        setConfirmMessage(message);
-        setConfirmLabel(label);
-        setConfirmColor(color);
-        setOnConfirmAction(() => () => {
-            onConfirm();
-            setConfirmOpen(false);
-        });
-        setConfirmOpen(true);
-    };
-
-    const handleConfirm = () => {
-        onConfirmAction();
-        setConfirmOpen(false);
-    };
-
-    const [alertMessage, setAlertMessage] = useState('');
-    const [alertOpen, setAlertOpen] = useState(false);
-    const [alertSeverity, setAlertSeverity] = useState('success');
-
-    const showAlert = (message) => {
-        setAlertMessage(message);
-        setAlertOpen(true);
-    };
-
-    const handleCloseAlert = () => {
-        setAlertOpen(false);
-        setAlertMessage('');
-    };
-
-
+    }); 
 
     const [provinces, setProvinces] = useState([]);
     const [districts, setDistricts] = useState([]);
@@ -131,11 +95,114 @@ const Client = ({
         }
     }, [hoaDonId, khachHangMap]);
 
+    // const handleLocalSearch = async () => {
+    //     if (!searchSdt?.trim()) {
+    //         showAlert('Vui lòng nhập số điện thoại.');
+    //         setAlertSeverity('warning');
+    //         setAlertOpen(true);
+    //         return;
+    //     }
+
+    //     setLoading(true);
+
+    //     try {
+    //         const customerInfo = await getKHBySdt(searchSdt);
+
+    //         if (!customerInfo || !customerInfo.id) {
+    //             throw new Error('Không tìm thấy khách hàng.');
+    //         }
+
+    //         const addressList = await getDiaChiNhanByNguoiDungId(customerInfo.id);
+
+    //         const fullCustomerData = {
+    //             ...customerInfo,
+    //             diaChiNguoiDung: customerInfo.diaChi || '',
+    //             xaNguoiDung: customerInfo.xa || '',
+    //             huyenNguoiDung: customerInfo.huyen || '',
+    //             tinhNguoiDung: customerInfo.tinh || '',
+    //             danhSachDiaChi: Array.isArray(addressList) && addressList.length > 0
+    //                 ? addressList
+    //                 : ['Không có địa chỉ nhận'], // hoặc [] nếu muốn
+    //         };
+
+    //         setKhachHang(fullCustomerData);
+    //         if (setKhachHangMap) {
+    //             setKhachHangMap(prev => ({ ...prev, [hoaDonId]: fullCustomerData }));
+    //         }
+
+    //         setShowSearchInput(false);
+    //         setSearchSdt('');
+
+    //     } catch (error) {
+    //         console.warn('Lỗi khi tìm khách hàng:', error);
+    //         showConfirmDialog({
+    //             title: 'Thêm mới khách hàng',
+    //             message: `Không tìm thấy khách hàng với SĐT "${searchSdt}". Bạn có muốn thêm mới không?`,
+    //             label: 'Thêm mới',
+    //             color: 'primary',
+    //             onConfirm: () => {
+    //                 setNewCustomer({ ...initialCustomerState, soDienThoai: searchSdt });
+    //                 setShowAddModal(true);
+    //                 setShowSearchInput(false);
+    //             }
+    //         });
+
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // };
+// hàm mới
+
+     useEffect(() => {
+        // Lấy giá trị hinhThucNhanHang từ localStorage
+        const savedHinhThucNhanHang = localStorage.getItem('hinhThucNhanHang');
+
+        if (savedHinhThucNhanHang) {
+            setHinhThucNhanHang(parseInt(savedHinhThucNhanHang, 10));  // Phục hồi giá trị từ localStorage
+        }
+    }, []); 
+    useEffect(() => {
+        const savedDiaChiNhanId = localStorage.getItem('diaChiNhanId');
+        if (savedDiaChiNhanId) {
+            setDiaChiNhanId(savedDiaChiNhanId); // Lấy diaChiNhanId từ localStorage
+            console.log("Loaded diaChiNhanId: ", savedDiaChiNhanId);  // Kiểm tra giá trị lấy được
+        }
+    }, []);
+
+
+    useEffect(() => {
+        // Kiểm tra nếu có dữ liệu khách hàng lưu trong localStorage
+        const storedCustomer = localStorage.getItem('selectedCustomer');
+
+        if (storedCustomer) {
+            // Nếu có, cập nhật lại state khachHang từ dữ liệu đã lưu
+            const customerData = JSON.parse(storedCustomer);
+            setKhachHang(customerData);
+            setShowSearchInput(false);  // Ẩn input tìm kiếm nếu đã có khách hàng
+        }
+    }, []);  // Chỉ chạy một lần khi component được mount (lần đầu tiên trang được tải)
+
+    useEffect(() => {
+        const storedDaXacNhan = localStorage.getItem(`daXacNhan-${hoaDonId}`);
+        if (storedDaXacNhan === 'true') {
+            setDaXacNhanState(true);
+        }
+    }, [hoaDonId]);
+
+    useEffect(() => {
+        if (daXacNhanState) {
+            // Cập nhật map khi người dùng xác nhận thành công
+            setXacNhanKhachHangMap(prevState => ({
+                ...prevState,
+                [hoaDonId]: true, // Đánh dấu rằng khách hàng đã xác nhận cho hoaDonId này
+            }));
+        }
+    }, [daXacNhanState, hoaDonId, setXacNhanKhachHangMap]);
+
+
     const handleLocalSearch = async () => {
         if (!searchSdt?.trim()) {
-            showAlert('Vui lòng nhập số điện thoại.');
-            setAlertSeverity('warning');
-            setAlertOpen(true);
+            toast.warning('Vui lòng nhập số điện thoại.');
             return;
         }
 
@@ -143,7 +210,6 @@ const Client = ({
 
         try {
             const customerInfo = await getKHBySdt(searchSdt);
-            console.log("🔍 Thông tin khách hàng:", customerInfo);
 
             if (!customerInfo || !customerInfo.id) {
                 throw new Error('Không tìm thấy khách hàng.');
@@ -159,8 +225,11 @@ const Client = ({
                 tinhNguoiDung: customerInfo.tinh || '',
                 danhSachDiaChi: Array.isArray(addressList) && addressList.length > 0
                     ? addressList
-                    : ['Không có địa chỉ nhận'], // hoặc [] nếu muốn
+                    : ['Không có địa chỉ nhận'],
             };
+
+            // Lưu thông tin khách hàng vào localStorage
+            localStorage.setItem('selectedCustomer', JSON.stringify(fullCustomerData));
 
             setKhachHang(fullCustomerData);
             if (setKhachHangMap) {
@@ -171,54 +240,110 @@ const Client = ({
             setSearchSdt('');
 
         } catch (error) {
-            console.warn('Lỗi khi tìm khách hàng:', error);
-            showConfirmDialog({
-                title: 'Thêm mới khách hàng',
-                message: `Không tìm thấy khách hàng với SĐT "${searchSdt}". Bạn có muốn thêm mới không?`,
-                label: 'Thêm mới',
-                color: 'primary',
-                onConfirm: () => {
-                    setNewCustomer({ ...initialCustomerState, soDienThoai: searchSdt });
-                    setShowAddModal(true);
-                    setShowSearchInput(false);
-                }
-            });
-
+            const result = await Swal.fire({
+                    title: "Thêm mới khách hàng",
+                    text: `Không tìm thấy khách hàng với SĐT ${searchSdt}. Bạn có muốn thêm mới không?`,
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#0051ffff",
+                    cancelButtonColor: "#888",
+                    confirmButtonText: "Thêm mới",
+                    cancelButtonText: "Hủy",
+                    });
+            if (result.isConfirmed) {
+                setNewCustomer({ ...initialCustomerState, soDienThoai: searchSdt });
+                setShowAddModal(true);
+                setShowSearchInput(false);
+            }
         } finally {
             setLoading(false);
         }
     };
 
-
-
+    
     const handleReload = () => {
-        
+        // 1. Hiển thị lại input tìm kiếm và reset số điện thoại
         setShowSearchInput(true);
         setSearchSdt('');
+        setDaXacNhanState(false); // Reset trạng thái xác nhận
 
+        // 2. Xóa thông tin khách hàng khỏi localStorage
+        localStorage.removeItem('selectedCustomer');
+
+        // 3. Cập nhật lại bản đồ khách hàng (setKhachHangMap)
         if (typeof setKhachHangMap === 'function') {
             setKhachHangMap(prevMap => {
                 const updatedMap = { ...prevMap };
-                updatedMap[hoaDonId] = null;
+                updatedMap[hoaDonId] = null;  // Reset khách hàng của hoaDonId
                 return updatedMap;
             });
         }
 
+        // 4. Reset thông tin khách hàng trong state
         if (typeof setKhachHang === 'function') {
-            setKhachHang(null);
+            setKhachHang(null);  // Reset state khách hàng
         }
 
+        // 5. Reset trạng thái xác nhận khách hàng (setXacNhanKhachHangMap)
         if (typeof setXacNhanKhachHangMap === 'function') {
             setXacNhanKhachHangMap(prev => {
                 const updated = { ...prev };
-                updated[hoaDonId] = false;
+                updated[hoaDonId] = false;  // Đặt lại trạng thái xác nhận cho hoaDonId
                 return updated;
             });
         }
-        
-        console.log(daXacNhan)
-        
+
+        // Debug console.log (nếu cần)
+        console.log(daXacNhan);
     };
+
+    const handleDiaChiChange = (dc, index) => {
+        setDiaChiNhanId(dc.id || index);
+        if (setSoDienThoai) setSoDienThoai(dc.soDienThoai || "");
+        localStorage.setItem('diaChiNhanId', dc.id || index); // Lưu lại địa chỉ nhận vào localStorage
+        console.log("Saved diaChiNhanId: ", dc.id || index);  // Kiểm tra xem giá trị có được lưu không
+    };
+
+    const handleXacNhan = () => {
+        handleXacNhanKhachHang(hoaDonId, khachHang, hinhThucNhanHang, diaChiNhanId);
+
+        // Lưu trạng thái xác nhận vào localStorage
+        localStorage.setItem(`daXacNhan-${hoaDonId}`, 'true');
+
+        // Cập nhật lại trạng thái xác nhận trong state của component
+        setDaXacNhanState(true);
+    };
+
+
+// end
+    // const handleReload = () => {
+        
+    //     setShowSearchInput(true);
+    //     setSearchSdt('');
+
+    //     if (typeof setKhachHangMap === 'function') {
+    //         setKhachHangMap(prevMap => {
+    //             const updatedMap = { ...prevMap };
+    //             updatedMap[hoaDonId] = null;
+    //             return updatedMap;
+    //         });
+    //     }
+
+    //     if (typeof setKhachHang === 'function') {
+    //         setKhachHang(null);
+    //     }
+
+    //     if (typeof setXacNhanKhachHangMap === 'function') {
+    //         setXacNhanKhachHangMap(prev => {
+    //             const updated = { ...prev };
+    //             updated[hoaDonId] = false;
+    //             return updated;
+    //         });
+    //     }
+        
+    //     console.log(daXacNhan)
+        
+    // };
 
 
     const handleChangeNewDiaChi = (e) => {
@@ -228,23 +353,21 @@ const Client = ({
 
     const handleAddDiaChi = async () => {
         if (!khachHang?.id) { 
-            showAlert('Không tìm thấy khách hàng');
-            setAlertSeverity('error');
-            setAlertOpen(true);
+            toast.error('Không tìm thấy khách hàng');
             return; 
          } 
 
         const diaChi = newDiaChi.diaChi || '';
-        const soNha = diaChi || '';
+        const soNha = newDiaChi.soNha || '';
         const tinh = provinces.find(p => p.code == selectedProvince)?.name || '';
         const huyen = districts.find(d => d.code == selectedDistrict)?.name || '';
         const xa = wards.find(w => w.code == selectedWard)?.name || '';
-
+        const diaChiDayDu = `${diaChi}, ${xa}, ${huyen}, ${tinh}`;
         const payload = {
             tenNguoiNhan: newDiaChi.tenNguoiNhan,
             soDienThoai: newDiaChi.soDienThoai,
-            diaChi: diaChi,
-            soNha: soNha,
+            diaChi: diaChiDayDu,
+            soNha: diaChi,
             tinh: tinh,
             huyen: huyen,
             xa: xa,
@@ -255,9 +378,7 @@ const Client = ({
 
         try {
             const result = await addDiaChiNhan(payload);
-            showAlert('Thêm địa chỉ thành công!');
-            setAlertSeverity('success');
-            setAlertOpen(true);
+            toast.success('Thêm địa chỉ thành công!');
             setKhachHang(prev => ({
                 ...prev,
                 danhSachDiaChi: [...(prev.danhSachDiaChi || []), result]
@@ -265,6 +386,7 @@ const Client = ({
             setNewDiaChi({
                 tenNguoiNhan: '',
                 soDienThoai: '',
+                soNha: '',
                 diaChi: ''
             });
             setSelectedProvince('');
@@ -272,9 +394,7 @@ const Client = ({
             setSelectedWard('');
             setShowDiaChiModal(false);
         } catch (error) {
-            showAlert('Lỗi khi thêm địa chỉ!');
-            setAlertSeverity('error');
-            setAlertOpen(true);
+            toast.error('Lỗi khi thêm địa chỉ!');
         }
     };
 
@@ -285,33 +405,30 @@ const Client = ({
             !newCustomer.soDienThoai || !newCustomer.gioiTinh ||
             selectedProvince === "" || selectedDistrict === "" || selectedWard === ""
         ) {
-            showAlert('Vui lòng nhập đầy đủ thông tin');
-            setAlertSeverity('warning');
-            setAlertOpen(true);
+            toast.warning('Vui lòng nhập đầy đủ thông tin');
             return;
         }
 
         setLoading(true);
         try {
-            // Check if phone number exists before adding
+            // Kiểm tra nếu số điện thoại đã tồn tại
             await getKHBySdt(newCustomer.soDienThoai);
-            showAlert('Số điện thoại đã tồn tại trong hệ thống.');
-            setAlertSeverity('warning');
-            setAlertOpen(true);
+            toast.warning('Số điện thoại đã tồn tại trong hệ thống.');
             setLoading(false);
         } catch (searchError) {
-            // Phone number does not exist, proceed to add
+            // Nếu số điện thoại không tồn tại, tiếp tục thêm khách hàng mới
             const diaChi = newCustomer.diaChi?.trim() || '';
             const tinh = provinces.find(p => p.code == selectedProvince)?.name || '';
             const huyen = districts.find(d => d.code == selectedDistrict)?.name || '';
             const xa = wards.find(w => w.code == selectedWard)?.name || '';
-            const diaChiDayDu = `${diaChi}, Xã ${xa}, Huyện ${huyen}, Tỉnh ${tinh}`;
+            const diaChiDayDu = `${diaChi}, ${xa}, ${huyen}, ${tinh}`;
+
             try {
                 const requestData = {
                     hoTen: newCustomer.hoTen,
                     soDienThoai: newCustomer.soDienThoai,
                     email: newCustomer.email || null,
-                    diaChiNguoiDung: newCustomer.diaChi || '',
+                    diaChiNguoiDung: diaChiDayDu || '',
                     tinhNguoiDung: provinces.find(p => p.code == selectedProvince)?.name || '',
                     huyenNguoiDung: districts.find(d => d.code == selectedDistrict)?.name || '',
                     xaNguoiDung: wards.find(w => w.code == selectedWard)?.name || '',
@@ -321,7 +438,7 @@ const Client = ({
                     tenNguoiNhan: newCustomer.hoTen,
                     soDienThoaiNhan: newCustomer.soDienThoai,
                     diaChiNhan: diaChiDayDu,
-                    soNhaNhan: diaChiDayDu,
+                    soNhaNhan: diaChi,
                     tinhNhan: tinh,
                     huyenNhan: huyen,
                     xaNhan: xa,
@@ -329,10 +446,8 @@ const Client = ({
                 };
 
                 const response = await addNguoiDung(requestData);
-                showAlert('Thêm khách hàng thành công!');
-                setAlertSeverity('success');
-                setAlertOpen(true);
-                setShowAddModal(false); // Close modal on success
+                toast.success('Thêm khách hàng thành công!');
+                setShowAddModal(false); // Đóng modal khi thêm thành công
                 setNewCustomer(initialCustomerState); // Reset form
 
                 const customerInfo = await getKHBySdt(response.soDienThoai);
@@ -348,6 +463,7 @@ const Client = ({
                             tenNguoiNhan: newCustomer.hoTen,
                             soDienThoai: newCustomer.soDienThoai,
                             diaChi: diaChi,
+                            soNha: diaChi,
                             xa: xa,
                             huyen: huyen,
                             tinh: tinh,
@@ -361,24 +477,15 @@ const Client = ({
                     setKhachHangMap(prev => ({ ...prev, [hoaDonId]: fullCustomerData }));
                 }
             } catch (addError) {
-                try {
-                    const existedEmailUser = await getKHByEmail(newCustomer.email);
-                    if (existedEmailUser) {
-                        showAlert('Email đã tồn tại trong hệ thống. Vui lòng dùng email khác.');
-                    } else {
-                        showAlert(addError.response?.data?.message || 'Lỗi khi thêm khách hàng');
-                    }
-                } catch (emailCheckError) {
-                    // Nếu không gọi được getKHByEmail thì fallback
-                    showAlert(addError.response?.data?.message || 'Lỗi khi thêm khách hàng');
-                }                    
-                setAlertSeverity('error');
-                setAlertOpen(true);
+                const errorMessage = addError.response?.data?.result || "Lỗi khi thêm khách hàng!";            
+                toast.error(errorMessage);
             } finally {
                 setLoading(false);
             }
         }
     };
+
+
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -408,10 +515,9 @@ const Client = ({
                                 if (e.key === 'Enter') {
                                     if (searchSdt.length === 10) {
                                         handleLocalSearch();
+                                        if (setSoDienThoai) setSoDienThoai(searchSdt || "");
                                     } else {
-                                        showAlert("Số điện thoại phải gồm đúng 10 chữ số");
-                                        setAlertSeverity("warning");
-                                        setAlertOpen(true);
+                                        toast.warning("Số điện thoại phải gồm đúng 10 chữ số");
                                     }
                                 }
                             }}
@@ -448,9 +554,12 @@ const Client = ({
                                     type="radio"
                                     name="hinhThucNhanHang"
                                     id="nhanTaiQuay"
-                                    value="0"
-                                    checked={hinhThucNhanHang === 0}
-                                    onChange={() => setHinhThucNhanHang(0)}
+                                    value="3"
+                                    checked={hinhThucNhanHang === 3}
+                                    onChange={() => {
+                                        setHinhThucNhanHang(3);
+                                        localStorage.setItem('hinhThucNhanHang', 3);
+                                    }}
                                     disabled={daXacNhan}
                                 />
                                 <label className="form-check-label" htmlFor="nhanTaiQuay">
@@ -466,7 +575,10 @@ const Client = ({
                                     id="giaoHang"
                                     value="1"
                                     checked={hinhThucNhanHang === 1}
-                                    onChange={() => setHinhThucNhanHang(1)}
+                                    onChange={() => {
+                                        setHinhThucNhanHang(1);
+                                        localStorage.setItem('hinhThucNhanHang', 1);
+                                    }}
                                     disabled={daXacNhan}
                                 />
                                 <label className="form-check-label" htmlFor="giaoHang">
@@ -518,7 +630,7 @@ const Client = ({
                                                                 className="form-control"
                                                                 name="diaChi"
                                                                 placeholder="Địa chỉ cụ thể (số nhà, đường, thôn...)"
-                                                                value={newDiaChi.diaChi}
+                                                                value={`${newDiaChi.soNha ? newDiaChi.soNha + ', ' : ''}${newDiaChi.diaChi || ''}`}
                                                                 onChange={handleChangeNewDiaChi}
                                                             />
                                                         </div>
@@ -576,9 +688,7 @@ const Client = ({
 
                                 <ul className="list-group list-group-flush">
                                     {khachHang.danhSachDiaChi.map((dc, index) => {
-                                        const isEmpty =
-                                            !dc.tenNguoiNhan && !dc.soDienThoai && !dc.soNha && !dc.xa && !dc.huyen && !dc.tinh;
-
+                                        const isEmpty = !dc.tenNguoiNhan && !dc.soDienThoai && !dc.soNha && !dc.xa && !dc.huyen && !dc.tinh;
                                         const diaChiDayDu = [dc.soNha, dc.xa, dc.huyen, dc.tinh].filter(Boolean).join(', ');
 
                                         return (
@@ -589,8 +699,8 @@ const Client = ({
                                                             type="radio"
                                                             className="form-check-input mt-1 me-2"
                                                             name="diaChiNhan"
-                                                            checked={diaChiNhanId === (dc.id || index)}
-                                                            onChange={() => setDiaChiNhanId(dc.id || index)}
+                                                            checked={String(diaChiNhanId) === String(dc.id || index)} // Kiểm tra xem có chọn đúng địa chỉ không
+                                                            onChange={() => handleDiaChiChange(dc, index)}  // Xử lý khi thay đổi
                                                             disabled={daXacNhan}
                                                         />
                                                         <div>
@@ -599,7 +709,6 @@ const Client = ({
                                                             <div><strong>Địa chỉ:</strong> {diaChiDayDu || '—'}</div>
                                                         </div>
                                                     </>
-
                                                 ) : (
                                                     <div className="text-muted fst-italic">Không có địa chỉ nhận</div>
                                                 )}
@@ -607,15 +716,17 @@ const Client = ({
                                         );
                                     })}
                                 </ul>
+
+
                             </div>
                         )}
 
 
-                        {!daXacNhan && (
+                        {!daXacNhanState && (
                             <div className="d-flex justify-content-between align-items-center mt-2">
                                 <button
                                     className="btn btn-sm btn-success"
-                                    onClick={() => handleXacNhanKhachHang(hoaDonId, khachHang, hinhThucNhanHang, diaChiNhanId)}
+                                    onClick={handleXacNhan}
                                     disabled={hinhThucNhanHang === 1 && diaChiNhanId === null}
                                 >
                                     Xác nhận khách hàng
@@ -709,22 +820,7 @@ const Client = ({
                     </div>
                 </div>
             )}
-            <CustomAlert
-                alertOpen={alertOpen}
-                alertMessage={alertMessage}
-                alertSeverity={alertSeverity}
-                onClose={handleCloseAlert}
-            />
-            <CustomConfirm
-                open={confirmOpen}
-                title={confirmTitle}
-                message={confirmMessage}
-                onCancel={() => setConfirmOpen(false)}
-                onConfirm={handleConfirm}
-                confirmLabel={confirmLabel}
-                confirmColor={confirmColor}
-                confirmVariant="contained"
-            />
+            <ToastContainer />
         </div>
     );
 };

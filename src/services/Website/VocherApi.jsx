@@ -31,33 +31,46 @@ export const createVoucher = async (voucherData) => {
   }
 };
 
-// Áp dụng phiếu giảm giá
 export const applyVoucher = async (applyData) => {
   try {
+    const token = Cookies.get("adminToken");
+
+    if (!token) {
+      throw new Error("Token không tồn tại trong cookie. Vui lòng đăng nhập lại.");
+    }
+
     const response = await apiClient.post("/ap-phieu-giam-gia", applyData, {
-      headers: getAuthHeaders(),
+      headers: {
+        ...getAuthHeaders(),
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
     });
     return response.data;
   } catch (error) {
-    console.error("Lỗi khi áp dụng phiếu giảm giá:", error);
+    console.error("Lỗi khi áp dụng phiếu giảm giá:", error.message || error);
     throw error;
   }
 };
-
-// Cập nhật phiếu giảm giá cho sản phẩm
-export const updateVoucher = async (updateData) => {
-  try {
-    const response = await apiClient.post("/ap-phieu-giam-gia-san-pham", updateData, {
-      headers: getAuthHeaders(),
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Lỗi khi cập nhật phiếu giảm giá:", error);
-    throw error;
-  }
+export const updateGiamGia = async (id, apDungGGUpdateRequest) => {
+    try {
+        const response = await apiClient.put(`/cap-nhat/${id}`, apDungGGUpdateRequest);
+        return response.data;
+    } catch (error) {
+        console.error("Lỗi khi gọi API cập nhật mã giảm giá", error);
+        throw error;
+    }
 };
 
-// Lấy danh sách phiếu giảm giá (phân trang)
+export const getGiamGiaDetail = async (id) => {
+    try {
+        const response = await apiClient.get(`/chi-tiet/${id}`);
+        return response.data;
+    } catch (error) {
+        console.error("Lỗi khi gọi API lấy chi tiết mã giảm giá", error);
+        throw error;
+    }
+};
 export const getPageGiamGia = async (
   page = 0,
   size = 5,
@@ -68,7 +81,15 @@ export const getPageGiamGia = async (
   ngayKetThuc
 ) => {
   try {
+    const token = Cookies.get("adminToken");
+    if (!token) {
+      throw new Error("Token không tồn tại trong cookie. Vui lòng đăng nhập lại.");
+    }
     const response = await apiClient.get("/hien-thi", {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
       params: {
         page,
         size,

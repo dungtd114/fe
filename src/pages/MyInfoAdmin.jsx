@@ -12,10 +12,9 @@ import {
   Typography,
   MenuItem,
 } from "@mui/material";
-import { useNavigate, useParams } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { getUserDetail, updateUser } from "../../services/Website/UserApi2";
+import { getMyInfo, updateMyInfo } from "../services/Website/UserApi2";
 import Swal from "sweetalert2";
 
 const API_PROVINCE = "https://provinces.open-api.vn/api/";
@@ -25,10 +24,7 @@ const fallbackProvinces = [
   { code: "02", name: "Hồ Chí Minh" },
 ];
 
-const CustomerDetailForm = () => {
-  const navigate = useNavigate();
-  const { id } = useParams();
-
+const UserProfileAdmin = () => {
   const [form, setForm] = useState({
     hoTen: "",
     soDienThoai: "",
@@ -39,7 +35,6 @@ const CustomerDetailForm = () => {
     address: "",
     gioiTinh: "1",
     namSinh: "",
-    trangThai: "1",
     cccd: "",
     tinh: "",
     huyen: "",
@@ -160,45 +155,40 @@ const CustomerDetailForm = () => {
   }, [form.district]);
 
   // Load user details
-  // Load user details
-useEffect(() => {
-  const fetchUser = async () => {
-    try {
-      const res = await getUserDetail(id);
-      const userData = res?.result || {};
-      const formattedNamSinh = userData.namSinh
-        ? new Date(userData.namSinh).toISOString().split("T")[0]
-        : "";
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await getMyInfo();
+        const userData = res?.result || {};
+        const formattedNamSinh = userData.namSinh
+          ? new Date(userData.namSinh).toISOString().split("T")[0]
+          : "";
+        const fullDiaChi = userData.diaChi || "";
+        const addressOnly = fullDiaChi.split(",")[0]?.trim() || "";
 
-      // Tách phần địa chỉ cụ thể (phía trước dấu phẩy đầu tiên)
-      const fullDiaChi = userData.diaChi || "";
-      const addressOnly = fullDiaChi.split(",")[0]?.trim() || "";
+        setForm((prev) => ({
+          ...prev,
+          hoTen: userData.hoTen || "",
+          soDienThoai: userData.soDienThoai || "",
+          email: userData.email || "",
+          address: addressOnly,
+          gioiTinh: userData.gioiTinh?.toString() || "1",
+          namSinh: formattedNamSinh,
+          cccd: userData.cccd || "",
+          tinh: userData.tinh || "",
+          huyen: userData.huyen || "",
+          xa: userData.xa || "",
+          province: "",
+          district: "",
+          ward: "",
+        }));
+      } catch (error) {
+        toast.error("Không thể tải thông tin cá nhân");
+      }
+    };
 
-      setForm((prev) => ({
-        ...prev,
-        hoTen: userData.hoTen || "",
-        soDienThoai: userData.soDienThoai || "",
-        email: userData.email || "",
-        address: addressOnly, // ✅ chỉ gán phần địa chỉ cụ thể
-        gioiTinh: userData.gioiTinh?.toString() || "1",
-        namSinh: formattedNamSinh,
-        trangThai: userData.trangThai?.toString() || "1",
-        cccd: userData.cccd || "",
-        tinh: userData.tinh || "",
-        huyen: userData.huyen || "",
-        xa: userData.xa || "",
-        province: "",
-        district: "",
-        ward: "",
-      }));
-    } catch (error) {
-      toast.error("Không thể tải dữ liệu nhân viên");
-    }
-  };
-
-  if (id && isProvincesLoaded) fetchUser();
-}, [id, isProvincesLoaded]);
-
+    if (isProvincesLoaded) fetchUser();
+  }, [isProvincesLoaded]);
 
   // Map tinh, huyen, xa to province, district, ward
   useEffect(() => {
@@ -209,9 +199,6 @@ useEffect(() => {
       );
       if (province) {
         setForm((prev) => ({ ...prev, province: province.code }));
-        console.log(`Mapped tinh: ${form.tinh} to province code: ${province.code}`);
-      } else {
-        console.log(`No province found for tinh: ${form.tinh}`);
       }
     }
   }, [form.tinh, provinces, isProvincesLoaded]);
@@ -224,9 +211,6 @@ useEffect(() => {
       );
       if (district) {
         setForm((prev) => ({ ...prev, district: district.code }));
-        console.log(`Mapped huyen: ${form.huyen} to district code: ${district.code}`);
-      } else {
-        console.log(`No district found for huyen: ${form.huyen}`);
       }
     }
   }, [form.huyen, districts, isDistrictsLoaded]);
@@ -237,9 +221,6 @@ useEffect(() => {
       const ward = wards.find((w) => normalizeText(w.name) === normalizedXa);
       if (ward) {
         setForm((prev) => ({ ...prev, ward: ward.code }));
-        console.log(`Mapped xa: ${form.xa} to ward code: ${ward.code}`);
-      } else {
-        console.log(`No ward found for xa: ${form.xa}`);
       }
     }
   }, [form.xa, wards, isWardsLoaded]);
@@ -279,7 +260,6 @@ useEffect(() => {
       email: form.email,
       gioiTinh: parseInt(form.gioiTinh),
       namSinh: formattedDate,
-      trangThai: parseInt(form.trangThai),
       diaChi: `${form.address}, ${wardNames[form.ward] || ""}, ${districtNames[form.district] || ""}, ${provinceNames[form.province] || ""}`,
       tinh: provinceNames[form.province] || "",
       huyen: districtNames[form.district] || "",
@@ -288,8 +268,8 @@ useEffect(() => {
     };
 
     const result = await Swal.fire({
-      title: "Xác nhận cập nhật",
-      text: "Bạn có chắc chắn muốn cập nhật thông tin này không?",
+      title: "Xác nhận cập nhật thông tin",
+      text: "Bạn có chắc chắn muốn cập nhật thông tin cá nhân này không?",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#ff6600",
@@ -299,27 +279,24 @@ useEffect(() => {
     });
 
     if (result.isConfirmed) {
-        try {
-      console.log("Payload gửi đi:", payload);
-      await updateUser(id, payload);
-      toast.success("Cập nhật thành công!");
-      navigate("/admin/tai-khoan/nhan-vien");
-    } catch (err) {
-      toast.error("Lỗi khi cập nhật nhân viên!");
-      console.error("Chi tiết lỗi:", err);
-    } finally {
+      try {
+        await updateMyInfo(payload);
+        toast.success("Cập nhật thông tin thành công!");
+      } catch (err) {
+        toast.error("Lỗi khi cập nhật thông tin!");
+        console.error("Chi tiết lỗi:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
       setIsLoading(false);
     }
-    }else{
-        setIsLoading(false);
-    }
-    
   };
 
   return (
     <Box sx={{ maxWidth: 1100, mx: "auto", p: { xs: 2, sm: 4 } }}>
-      <Typography variant="h4" fontWeight={700} gutterBottom color="#0066cc">
-        Cập nhật khách hàng
+      <Typography variant="h4" fontWeight={700} gutterBottom color="#ff6600">
+        Thông tin cá nhân
       </Typography>
 
       <Box
@@ -327,54 +304,64 @@ useEffect(() => {
         component="form"
         onSubmit={handleUpdate}
       >
-        <Grid container spacing={4}>
+        <Grid container spacing={2}>
           <Grid item xs={12} md={6}>
-            <TextField
-              name="hoTen"
-              value={form.hoTen}
-              onChange={handleChange}
-              fullWidth
-              required
-              label="Họ và tên"
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              name="soDienThoai"
-              value={form.soDienThoai}
-              onChange={handleChange}
-              fullWidth
-              required
-              label="Số điện thoại"
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              fullWidth
-              required
-              label="Email"
-              type="email"
-              sx={{ mb: 2 }}
-            />
+            <Box display="flex" gap={2} sx={{ mb: 1.5 }}>
+              <TextField
+                name="hoTen"
+                value={form.hoTen}
+                onChange={handleChange}
+                fullWidth
+                required
+                label="Họ và tên"
+                size="small"
+                sx={{ '& .MuiInputBase-input': { padding: '8px 12px', fontSize: '0.875rem' } }}
+              />
+              <TextField
+                name="soDienThoai"
+                value={form.soDienThoai}
+                onChange={handleChange}
+                fullWidth
+                required
+                label="Số điện thoại"
+                size="small"
+                sx={{ '& .MuiInputBase-input': { padding: '8px 12px', fontSize: '0.875rem' } }}
+              />
+            </Box>
+            <Box display="flex" gap={2} sx={{ mb: 1.5 }}>
+              <TextField
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                fullWidth
+                required
+                label="Email"
+                type="email"
+                size="small"
+                sx={{ '& .MuiInputBase-input': { padding: '8px 12px', fontSize: '0.875rem' } }}
+                disabled
+              />
+              <TextField
+                name="namSinh"
+                value={form.namSinh}
+                onChange={handleChange}
+                fullWidth
+                required
+                type="date"
+                label="Ngày sinh"
+                InputLabelProps={{ shrink: true }}
+                size="small"
+                sx={{ '& .MuiInputBase-input': { padding: '8px 12px', fontSize: '0.875rem' } }}
+              />
+            </Box>
             <TextField
               name="cccd"
               value={form.cccd}
               onChange={handleChange}
               fullWidth
               label="CCCD"
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              name="namSinh"
-              value={form.namSinh}
-              onChange={handleChange}
-              fullWidth
-              required
-              type="date"
-              label="Ngày sinh"
-              InputLabelProps={{ shrink: true }}
-              sx={{ mb: 2 }}
+              size="small"
+              sx={{ mb: 1.5, '& .MuiInputBase-input': { padding: '8px 12px', fontSize: '0.875rem' } }}
             />
             <FormLabel component="legend">Giới tính</FormLabel>
             <RadioGroup
@@ -383,28 +370,8 @@ useEffect(() => {
               value={form.gioiTinh}
               onChange={handleChange}
             >
-              <FormControlLabel value="1" control={<Radio />} label="Nam" />
-              <FormControlLabel value="0" control={<Radio />} label="Nữ" />
-            </RadioGroup>
-            <FormLabel component="legend" sx={{ mt: 2 }}>
-              Trạng thái
-            </FormLabel>
-            <RadioGroup
-              row
-              name="trangThai"
-              value={form.trangThai}
-              onChange={handleChange}
-            >
-              <FormControlLabel
-                value="1"
-                control={<Radio />}
-                label="Hoạt động"
-              />
-              <FormControlLabel
-                value="0"
-                control={<Radio />}
-                label="Không hoạt động"
-              />
+              <FormControlLabel value="1" control={<Radio size="small" />} label="Nam" />
+              <FormControlLabel value="0" control={<Radio size="small" />} label="Nữ" />
             </RadioGroup>
           </Grid>
 
@@ -417,7 +384,15 @@ useEffect(() => {
               fullWidth
               required
               label="Tỉnh/Thành phố"
-              sx={{ mb: 2 }}
+              size="small"
+              sx={{ mb: 1.5, '& .MuiInputBase-input': { padding: '8px 12px', fontSize: '0.875rem' } }}
+              SelectProps={{
+                MenuProps: {
+                  PaperProps: {
+                    sx: { maxWidth: '100%' } // Prevents dropdown from widening
+                  }
+                }
+              }}
             >
               <MenuItem value="">-- Chọn tỉnh --</MenuItem>
               {provinces.map((p) => (
@@ -435,8 +410,16 @@ useEffect(() => {
               fullWidth
               required
               label="Quận/Huyện"
-              sx={{ mb: 2 }}
+              size="small"
+              sx={{ mb: 1.5, '& .MuiInputBase-input': { padding: '8px 12px', fontSize: '0.875rem' } }}
               disabled={!form.province}
+              SelectProps={{
+                MenuProps: {
+                  PaperProps: {
+                    sx: { maxWidth: '100%' } // Prevents dropdown from widening
+                  }
+                }
+              }}
             >
               <MenuItem value="">-- Chọn quận --</MenuItem>
               {districts.map((d) => (
@@ -454,8 +437,16 @@ useEffect(() => {
               fullWidth
               required
               label="Phường/Xã"
-              sx={{ mb: 2 }}
+              size="small"
+              sx={{ mb: 1.5, '& .MuiInputBase-input': { padding: '8px 12px', fontSize: '0.875rem' } }}
               disabled={!form.district}
+              SelectProps={{
+                MenuProps: {
+                  PaperProps: {
+                    sx: { maxWidth: '100%' } // Prevents dropdown from widening
+                  }
+                }
+              }}
             >
               <MenuItem value="">-- Chọn phường --</MenuItem>
               {wards.map((w) => (
@@ -472,7 +463,8 @@ useEffect(() => {
               fullWidth
               required
               label="Địa chỉ cụ thể"
-              sx={{ mb: 2 }}
+              size="small"
+              sx={{ mb: 1.5, '& .MuiInputBase-input': { padding: '8px 12px', fontSize: '0.875rem' } }}
             />
           </Grid>
 
@@ -483,14 +475,15 @@ useEffect(() => {
                 variant="contained"
                 disabled={isLoading}
                 sx={{
-                  px: 5,
-                  py: 1.5,
+                  px: 4,
+                  py: 1,
                   backgroundColor: "#0066cc",
                   "&:hover": { backgroundColor: "#0052a3" },
-                  fontWeight: 700,
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
                 }}
                 startIcon={
-                  isLoading ? <CircularProgress size={20} color="inherit" /> : null
+                  isLoading ? <CircularProgress size={18} color="inherit" /> : null
                 }
               >
                 {isLoading ? "Đang xử lý..." : "Lưu thay đổi"}
@@ -505,4 +498,4 @@ useEffect(() => {
   );
 };
 
-export default CustomerDetailForm;
+export default UserProfileAdmin;

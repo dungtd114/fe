@@ -46,9 +46,13 @@ const Discounts = () => {
         setTotalPages(1);
       }
     } catch (error) {
+      console.error("Lỗi khi tải dữ liệu:", error.response?.status, error.message);
+      if (error.response && error.response.status === 401 || error.response.status === 403) {
+      navigate("/access-denied");
+      }else { 
       console.error("Lỗi khi tải dữ liệu:", error);
       setVouchers([]);
-      setTotalPages(1);
+      setTotalPages(1);}
     } finally {
       setLoading(false);
     }
@@ -212,7 +216,7 @@ const Discounts = () => {
                   </td>
                   <td>
                     <button
-                      onClick={() => navigate(`/website/giam-gia/chi-tiet/${voucher.id}`)}
+                      onClick={() => navigate(`/admin/giam-gia/chi-tiet/${voucher.id}`)}
                       style={{ backgroundColor: "#212529", color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px" }}
                     >
                       <i className="bi bi-eye-fill me-1"></i> Xem

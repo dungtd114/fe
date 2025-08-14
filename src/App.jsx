@@ -38,6 +38,12 @@ import UpdateStaff from "./pages/Admin/UpdateStaff";
 import AddCustomer from "./pages/Admin/AddCustomer";
 import UpdateCustomer from "./pages/Admin/UpdateCustomer";
 import OrderDetail from "./pages/Website/OrderDetail";
+import UpdateVoucher from "./pages/Admin/UpdateVoucher";
+import AccessDenied from "./pages/AccessDenied";
+import UserProfile from "./pages/MyInfo";
+import AdminLogin from "./pages/AdminLogin";
+import UserProfileAdmin from "./pages/MyInfoAdmin";
+
 function App() {
   return (
     <BrowserRouter>
@@ -56,7 +62,7 @@ function App() {
           <Route path="/website/dat-hang/lich-su-dat-hang/chi-tiet-don-hang/:orderId" element={<OrderDetail />} />
           <Route path="/thanh-toan-thanh-cong" element={<PaymentSuccess />} />
           <Route path="/thanh-toan-that-bai" element={<PaymentSuccess />} />
-
+          <Route path="/website/thong-tin-ca-nhan" element={<UserProfile />} />
         </Route>
 
         {/* Routes cho AdminLayout */}
@@ -78,13 +84,17 @@ function App() {
           <Route path="/admin/san-pham-chi-tiet/:id" element={<SanPhamCtPage />} />
           <Route path="/admin/quan-ly-sp/them-san-pham" element={<AddProductWithDetailsPage />} />
           <Route path="/admin/giam-gia/them-phieu-giam-gia" element={<AddVoucher />} />
-
+          <Route path="/admin/giam-gia/chi-tiet/:id" element={<UpdateVoucher />} />
           <Route path="/admin/orders/:id" element={<OrderDetailAdmin />} />
           <Route path="/admin/tai-khoan/nhan-vien/them-nhan-vien" element={<AddStaff />} />
           <Route path="/admin/tai-khoan/nhan-vien/chi-tiet/:id" element={<UpdateStaff />} />
           <Route path="/admin/tai-khoan/khach-hang/them-khach-hang" element={<AddCustomer />} />
           <Route path="/admin/tai-khoan/khach-hang/chi-tiet/:id" element={<UpdateCustomer />} />
+          <Route path="/website/thong-tin-ca-nhan-cua-toi" element={<UserProfileAdmin />} />
+
         </Route>
+        <Route path="/access-denied" element={<AccessDenied />} />
+        <Route path="/styleStore/login/admin" element={<AdminLogin />} />
       </Routes>
     </BrowserRouter>
   );
