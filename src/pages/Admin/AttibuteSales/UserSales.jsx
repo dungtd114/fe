@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSearch, faSyncAlt, faPlus, faTimes } from '@fortawesome/free-solid-svg-icons';
 import { getKHBySdt, addNguoiDung, addDiaChiNhan, getDiaChiNhanByNguoiDungId, searchUserById } from '../../../services/Admin/CounterSales/NguoiDungSAdmService';
 import Swal from 'sweetalert2';
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { set } from 'lodash';
 const API_PROVINCE_URL = "https://provinces.open-api.vn/api/";
 
-const Client = ({
+const Client = forwardRef(({
     hoaDonId,
     khachHangMap,
     setKhachHangMap,
@@ -17,7 +18,7 @@ const Client = ({
     hinhThucNhanHang,
     setHinhThucNhanHang,
     setSoDienThoai
-}) => {
+}, ref) => {
     const [loading, setLoading] = useState(false);
     const [khachHang, setKhachHang] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -34,7 +35,7 @@ const Client = ({
         xa: '',
         huyen: '',
         tinh: ''
-    }); 
+    });
 
     const [provinces, setProvinces] = useState([]);
     const [districts, setDistricts] = useState([]);
@@ -95,94 +96,70 @@ const Client = ({
         }
     }, [hoaDonId, khachHangMap]);
 
-    // const handleLocalSearch = async () => {
-    //     if (!searchSdt?.trim()) {
-    //         showAlert('Vui lòng nhập số điện thoại.');
-    //         setAlertSeverity('warning');
-    //         setAlertOpen(true);
-    //         return;
-    //     }
-
-    //     setLoading(true);
-
-    //     try {
-    //         const customerInfo = await getKHBySdt(searchSdt);
-
-    //         if (!customerInfo || !customerInfo.id) {
-    //             throw new Error('Không tìm thấy khách hàng.');
-    //         }
-
-    //         const addressList = await getDiaChiNhanByNguoiDungId(customerInfo.id);
-
-    //         const fullCustomerData = {
-    //             ...customerInfo,
-    //             diaChiNguoiDung: customerInfo.diaChi || '',
-    //             xaNguoiDung: customerInfo.xa || '',
-    //             huyenNguoiDung: customerInfo.huyen || '',
-    //             tinhNguoiDung: customerInfo.tinh || '',
-    //             danhSachDiaChi: Array.isArray(addressList) && addressList.length > 0
-    //                 ? addressList
-    //                 : ['Không có địa chỉ nhận'], // hoặc [] nếu muốn
-    //         };
-
-    //         setKhachHang(fullCustomerData);
-    //         if (setKhachHangMap) {
-    //             setKhachHangMap(prev => ({ ...prev, [hoaDonId]: fullCustomerData }));
-    //         }
-
-    //         setShowSearchInput(false);
-    //         setSearchSdt('');
-
-    //     } catch (error) {
-    //         console.warn('Lỗi khi tìm khách hàng:', error);
-    //         showConfirmDialog({
-    //             title: 'Thêm mới khách hàng',
-    //             message: `Không tìm thấy khách hàng với SĐT "${searchSdt}". Bạn có muốn thêm mới không?`,
-    //             label: 'Thêm mới',
-    //             color: 'primary',
-    //             onConfirm: () => {
-    //                 setNewCustomer({ ...initialCustomerState, soDienThoai: searchSdt });
-    //                 setShowAddModal(true);
-    //                 setShowSearchInput(false);
-    //             }
-    //         });
-
-    //     } finally {
-    //         setLoading(false);
-    //     }
-    // };
-// hàm mới
-
-     useEffect(() => {
-        // Lấy giá trị hinhThucNhanHang từ localStorage
-        const savedHinhThucNhanHang = localStorage.getItem('hinhThucNhanHang');
-
+    useEffect(() => {
+        // Load hình thức nhận hàng theo hoaDonId
+        const savedHinhThucNhanHang = localStorage.getItem(`hinhThucNhanHang-${hoaDonId}`);
         if (savedHinhThucNhanHang) {
-            setHinhThucNhanHang(parseInt(savedHinhThucNhanHang, 10));  // Phục hồi giá trị từ localStorage
+            setHinhThucNhanHang(parseInt(savedHinhThucNhanHang, 10));
         }
-    }, []); 
+    }, [hoaDonId]);
+
     useEffect(() => {
-        const savedDiaChiNhanId = localStorage.getItem('diaChiNhanId');
+        // Load địa chỉ nhận theo hoaDonId
+        const savedDiaChiNhanId = localStorage.getItem(`diaChiNhanId-${hoaDonId}`);
         if (savedDiaChiNhanId) {
-            setDiaChiNhanId(savedDiaChiNhanId); // Lấy diaChiNhanId từ localStorage
-            console.log("Loaded diaChiNhanId: ", savedDiaChiNhanId);  // Kiểm tra giá trị lấy được
+            setDiaChiNhanId(savedDiaChiNhanId);
         }
-    }, []);
+    }, [hoaDonId]);
+
+    useEffect(() => {
+        const savedPhone = localStorage.getItem(`soDienThoai-${hoaDonId}`);
+        if (savedPhone) {
+            setSoDienThoai(savedPhone);
+        }
+    }, [hoaDonId]);
+
+    useEffect(() => {
+        const currentMap = JSON.parse(localStorage.getItem('soDienThoaiMap') || '{}');
+        if (currentMap[hoaDonId]) {
+            setSoDienThoai(currentMap[hoaDonId]);
+        }
+    }, [hoaDonId]);
 
 
     useEffect(() => {
-        // Kiểm tra nếu có dữ liệu khách hàng lưu trong localStorage
-        const storedCustomer = localStorage.getItem('selectedCustomer');
+        // Khôi phục thông tin khách hàng
+        const savedCustomer = localStorage.getItem(`selectedCustomer-${hoaDonId}`);
+        if (savedCustomer) {
+            const parsedCustomer = JSON.parse(savedCustomer);
+            setKhachHang(parsedCustomer);
 
+        }
+
+        const savedKhachHangMap = localStorage.getItem('khachHangMap');
+        if (savedKhachHangMap && setKhachHangMap) {
+            setKhachHangMap(JSON.parse(savedKhachHangMap));
+        }
+
+        // Khôi phục số điện thoại đang nhập dở (nếu có)
+        const pendingSdt = localStorage.getItem(`pendingSdt-${hoaDonId}`);
+        if (pendingSdt) {
+            setSearchSdt(pendingSdt);
+        }
+    }, [hoaDonId, setKhachHangMap]);
+
+
+    useEffect(() => {
+        // Load khách hàng theo hoaDonId
+        const storedCustomer = localStorage.getItem(`selectedCustomer-${hoaDonId}`);
         if (storedCustomer) {
-            // Nếu có, cập nhật lại state khachHang từ dữ liệu đã lưu
-            const customerData = JSON.parse(storedCustomer);
-            setKhachHang(customerData);
-            setShowSearchInput(false);  // Ẩn input tìm kiếm nếu đã có khách hàng
+            setKhachHang(JSON.parse(storedCustomer));
+            setShowSearchInput(false);
         }
-    }, []);  // Chỉ chạy một lần khi component được mount (lần đầu tiên trang được tải)
+    }, [hoaDonId]);
 
     useEffect(() => {
+        // Load trạng thái xác nhận theo hoaDonId
         const storedDaXacNhan = localStorage.getItem(`daXacNhan-${hoaDonId}`);
         if (storedDaXacNhan === 'true') {
             setDaXacNhanState(true);
@@ -194,11 +171,26 @@ const Client = ({
             // Cập nhật map khi người dùng xác nhận thành công
             setXacNhanKhachHangMap(prevState => ({
                 ...prevState,
-                [hoaDonId]: true, // Đánh dấu rằng khách hàng đã xác nhận cho hoaDonId này
+                [hoaDonId]: true
             }));
-        }
-    }, [daXacNhanState, hoaDonId, setXacNhanKhachHangMap]);
 
+            // Lưu trạng thái xác nhận vào localStorage theo hoaDonId
+            localStorage.setItem(`daXacNhan-${hoaDonId}`, 'true');
+
+            // Lưu thông tin khách hàng vào localStorage theo hoaDonId
+            if (khachHang) {
+                localStorage.setItem(`selectedCustomer-${hoaDonId}`, JSON.stringify(khachHang));
+            }
+
+            // Lưu hình thức nhận hàng theo hoaDonId
+            localStorage.setItem(`hinhThucNhanHang-${hoaDonId}`, hinhThucNhanHang);
+
+            // Lưu địa chỉ nhận theo hoaDonId
+            if (diaChiNhanId) {
+                localStorage.setItem(`diaChiNhanId-${hoaDonId}`, diaChiNhanId);
+            }
+        }
+    }, [daXacNhanState, hoaDonId, setXacNhanKhachHangMap, khachHang, hinhThucNhanHang, diaChiNhanId]);
 
     const handleLocalSearch = async () => {
         if (!searchSdt?.trim()) {
@@ -229,11 +221,21 @@ const Client = ({
             };
 
             // Lưu thông tin khách hàng vào localStorage
-            localStorage.setItem('selectedCustomer', JSON.stringify(fullCustomerData));
-
+            // localStorage.setItem('selectedCustomer', JSON.stringify(fullCustomerData));
+            localStorage.setItem(`selectedCustomer-${hoaDonId}`, JSON.stringify(fullCustomerData));
+            // localStorage.setItem(`lastSearchSdt-${hoaDonId}`, searchSdt);
+            localStorage.setItem('soDienThoaiMap', JSON.stringify({
+                ...JSON.parse(localStorage.getItem('soDienThoaiMap') || '{}'),
+                [hoaDonId]: searchSdt
+            }));
             setKhachHang(fullCustomerData);
             if (setKhachHangMap) {
                 setKhachHangMap(prev => ({ ...prev, [hoaDonId]: fullCustomerData }));
+
+                localStorage.setItem(`khachHangMap`, JSON.stringify({
+                    ...JSON.parse(localStorage.getItem(`khachHangMap`) || {}),
+                    [hoaDonId]: fullCustomerData
+                }));
             }
 
             setShowSearchInput(false);
@@ -241,15 +243,15 @@ const Client = ({
 
         } catch (error) {
             const result = await Swal.fire({
-                    title: "Thêm mới khách hàng",
-                    text: `Không tìm thấy khách hàng với SĐT ${searchSdt}. Bạn có muốn thêm mới không?`,
-                    icon: "warning",
-                    showCancelButton: true,
-                    confirmButtonColor: "#0051ffff",
-                    cancelButtonColor: "#888",
-                    confirmButtonText: "Thêm mới",
-                    cancelButtonText: "Hủy",
-                    });
+                title: "Thêm mới khách hàng",
+                text: `Không tìm thấy khách hàng với SĐT ${searchSdt}. Bạn có muốn thêm mới không?`,
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#0051ffff",
+                cancelButtonColor: "#888",
+                confirmButtonText: "Thêm mới",
+                cancelButtonText: "Hủy",
+            });
             if (result.isConfirmed) {
                 setNewCustomer({ ...initialCustomerState, soDienThoai: searchSdt });
                 setShowAddModal(true);
@@ -260,91 +262,63 @@ const Client = ({
         }
     };
 
-    
     const handleReload = () => {
-        // 1. Hiển thị lại input tìm kiếm và reset số điện thoại
         setShowSearchInput(true);
         setSearchSdt('');
-        setDaXacNhanState(false); // Reset trạng thái xác nhận
+        setDaXacNhanState(false);
 
-        // 2. Xóa thông tin khách hàng khỏi localStorage
-        localStorage.removeItem('selectedCustomer');
+        // Xóa dữ liệu theo hoaDonId
+        localStorage.removeItem(`selectedCustomer-${hoaDonId}`);
+        localStorage.removeItem(`daXacNhan-${hoaDonId}`);
+        localStorage.removeItem(`diaChiNhanId-${hoaDonId}`);
+        localStorage.removeItem(`hinhThucNhanHang-${hoaDonId}`);
 
-        // 3. Cập nhật lại bản đồ khách hàng (setKhachHangMap)
         if (typeof setKhachHangMap === 'function') {
-            setKhachHangMap(prevMap => {
-                const updatedMap = { ...prevMap };
-                updatedMap[hoaDonId] = null;  // Reset khách hàng của hoaDonId
-                return updatedMap;
-            });
+            setKhachHangMap(prevMap => ({
+                ...prevMap,
+                [hoaDonId]: null
+            }));
         }
 
-        // 4. Reset thông tin khách hàng trong state
-        if (typeof setKhachHang === 'function') {
-            setKhachHang(null);  // Reset state khách hàng
-        }
+        setKhachHang(null);
 
-        // 5. Reset trạng thái xác nhận khách hàng (setXacNhanKhachHangMap)
         if (typeof setXacNhanKhachHangMap === 'function') {
-            setXacNhanKhachHangMap(prev => {
-                const updated = { ...prev };
-                updated[hoaDonId] = false;  // Đặt lại trạng thái xác nhận cho hoaDonId
-                return updated;
-            });
+            setXacNhanKhachHangMap(prev => ({
+                ...prev,
+                [hoaDonId]: false
+            }));
         }
-
-        // Debug console.log (nếu cần)
-        console.log(daXacNhan);
     };
+
+    useImperativeHandle(ref, () => ({
+        reloadClient: handleReload
+    }));
 
     const handleDiaChiChange = (dc, index) => {
         setDiaChiNhanId(dc.id || index);
-        if (setSoDienThoai) setSoDienThoai(dc.soDienThoai || "");
-        localStorage.setItem('diaChiNhanId', dc.id || index); // Lưu lại địa chỉ nhận vào localStorage
-        console.log("Saved diaChiNhanId: ", dc.id || index);  // Kiểm tra xem giá trị có được lưu không
+
+        if (setSoDienThoai) {
+            const currentMap = JSON.parse(localStorage.getItem('soDienThoaiMap') || '{}');
+            const phone = dc?.soDienThoai?.trim() || currentMap[hoaDonId] || searchSdt || "";
+            setSoDienThoai(phone);
+
+            localStorage.setItem('soDienThoaiMap', JSON.stringify({
+                ...currentMap,
+                [hoaDonId]: phone
+            }));
+        }
+
+        console.log("Selected diaChiNhanId: ", dc.soDienThoai);
+        localStorage.setItem(`diaChiNhanId-${hoaDonId}`, dc.id || index);
     };
+
 
     const handleXacNhan = () => {
         handleXacNhanKhachHang(hoaDonId, khachHang, hinhThucNhanHang, diaChiNhanId);
-
-        // Lưu trạng thái xác nhận vào localStorage
         localStorage.setItem(`daXacNhan-${hoaDonId}`, 'true');
-
-        // Cập nhật lại trạng thái xác nhận trong state của component
+        localStorage.setItem(`hinhThucNhanHang-${hoaDonId}`, hinhThucNhanHang);
         setDaXacNhanState(true);
     };
-
-
-// end
-    // const handleReload = () => {
-        
-    //     setShowSearchInput(true);
-    //     setSearchSdt('');
-
-    //     if (typeof setKhachHangMap === 'function') {
-    //         setKhachHangMap(prevMap => {
-    //             const updatedMap = { ...prevMap };
-    //             updatedMap[hoaDonId] = null;
-    //             return updatedMap;
-    //         });
-    //     }
-
-    //     if (typeof setKhachHang === 'function') {
-    //         setKhachHang(null);
-    //     }
-
-    //     if (typeof setXacNhanKhachHangMap === 'function') {
-    //         setXacNhanKhachHangMap(prev => {
-    //             const updated = { ...prev };
-    //             updated[hoaDonId] = false;
-    //             return updated;
-    //         });
-    //     }
-        
-    //     console.log(daXacNhan)
-        
-    // };
-
 
     const handleChangeNewDiaChi = (e) => {
         const { name, value } = e.target;
@@ -352,10 +326,10 @@ const Client = ({
     };
 
     const handleAddDiaChi = async () => {
-        if (!khachHang?.id) { 
+        if (!khachHang?.id) {
             toast.error('Không tìm thấy khách hàng');
-            return; 
-         } 
+            return;
+        }
 
         const diaChi = newDiaChi.diaChi || '';
         const soNha = newDiaChi.soNha || '';
@@ -477,7 +451,7 @@ const Client = ({
                     setKhachHangMap(prev => ({ ...prev, [hoaDonId]: fullCustomerData }));
                 }
             } catch (addError) {
-                const errorMessage = addError.response?.data?.result || "Lỗi khi thêm khách hàng!";            
+                const errorMessage = addError.response?.data?.result || "Lỗi khi thêm khách hàng!";
                 toast.error(errorMessage);
             } finally {
                 setLoading(false);
@@ -516,6 +490,7 @@ const Client = ({
                                     if (searchSdt.length === 10) {
                                         handleLocalSearch();
                                         if (setSoDienThoai) setSoDienThoai(searchSdt || "");
+                                        console.log("Số điện thoại tìm kiếm: ", searchSdt);
                                     } else {
                                         toast.warning("Số điện thoại phải gồm đúng 10 chữ số");
                                     }
@@ -823,6 +798,6 @@ const Client = ({
             <ToastContainer />
         </div>
     );
-};
+});
 
 export default Client;

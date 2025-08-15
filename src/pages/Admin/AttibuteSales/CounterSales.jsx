@@ -10,13 +10,13 @@ import { getKHBySdt } from '../../../services/Admin/CounterSales/NguoiDungSAdmSe
 import Client from './UserSales';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import HoaDonPDFExport from './InvoicePDFExport';
+// import HoaDonPDFExport from './InvoicePDFExport';
 import { submitVNPayOrder } from "../../../services/Website/OrderApi";
 import QRCode from "react-qr-code";
 import Swal from 'sweetalert2';
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-
+import { toast } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
+import ReactDOM from 'react-dom/client';
 const CounterSalesStyle = `
 .table {
     background: #fff;
@@ -114,6 +114,7 @@ const CounterSalesStyle = `
 }
 `;
 const CounterSales = () => {
+  const HoaDonPDFExport = React.lazy(() => import('./InvoicePDFExport'));
   const [hoaDons, setHoaDons] = useState([]);
   const [sanPhamsMap, setSanPhamsMap] = useState({});
   const [activeTab, setActiveTab] = useState(null);
@@ -125,11 +126,12 @@ const CounterSales = () => {
   const [searchSdt, setSearchSdt] = useState('');
   const [showSearchInput, setShowSearchInput] = useState(false);
   const [xacNhanKhachHangMap, setXacNhanKhachHangMap] = useState({});
-  const [daXacNhanKhachHang, setDaXacNhanKhachHang] = useState(false);
   const [diaChiNhanIdMap, setDiaChiNhanIdMap] = useState({});
   const [soDienThoaiMap, setSoDienThoaiMap] = useState({});
   const [tienThueMap, setTienThueMap] = useState({});
-  const printRef = useRef(null);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+
+  const clientRef = useRef(null);
 
   if (typeof document !== "undefined" && !document.getElementById("dashboard-style")) {
     const style = document.createElement("style");
@@ -161,7 +163,13 @@ const CounterSales = () => {
       console.log("Kết quả gọi API:", result);
       const list = result.content || [];
       setHoaDons(list);
-      if (list.length > 0) setActiveTab(list[0].id);
+      setActiveTab(prev => {
+        if (prev && list.some(hd => hd.id === prev)) {
+          return prev; // giữ nguyên tab hiện tại
+        }
+        return list[0]?.id || null; // nếu tab cũ không tồn tại thì chọn tab đầu
+      });
+      // if (list.length > 0) setActiveTab(list[0].id);
       setConnectError(false);
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error.response?.status, error.message);
@@ -176,6 +184,13 @@ const CounterSales = () => {
       // console.error('Lỗi khi load hóa đơn:', error.message);
     }
   };
+
+  useEffect(() => {
+    const savedMap = JSON.parse(localStorage.getItem('lastSearchSdt') || '{}');
+    if (Object.keys(savedMap).length > 0) {
+      setSoDienThoaiMap(savedMap);
+    }
+  }, []);
 
   useEffect(() => {
     fetchHoaDons();
@@ -209,7 +224,6 @@ const CounterSales = () => {
       setSanPhamsMap(prev => ({ ...prev, [newHoaDon.id]: [] }));
       setActiveTab(newHoaDon.id);
       setConnectError(false);
-
       toast.success('Tạo đơn hàng thành công!');
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error.response?.status, error.message);
@@ -293,45 +307,56 @@ const CounterSales = () => {
     sanPhamsMap[hoaDonId]?.reduce((sum, sp) => sum + sp.soLuong * (sp.giaTien || 0), 0) || 0;
 
   const handleOpenPdfInNewTab = async (hoaDonId) => {
-    const printRef = hoaDonRefs.current[hoaDonId];
-
-    if (!printRef) {
-      alert(`Không tìm thấy hóa đơn ${hoaDonId} để in`);
-      return;
-    }
-
     try {
-      // Tạm thời hiển thị phần tử để chụp
-      printRef.style.visibility = 'visible';
-      printRef.style.position = 'absolute';
-      printRef.style.left = '0';
-      printRef.style.top = '0';
+      // 1. Tạo một div tạm thời để render
+      const tempDiv = document.createElement('div');
+      tempDiv.style.cssText = 'position:absolute; top:0; left:-9999px; background:#fff;';
+      document.body.appendChild(tempDiv);
 
-      const canvas = await html2canvas(printRef, {
+      // 2. Render component vào div tạm
+      const { default: HoaDonPDF } = await import('./InvoicePDFExport');
+      const root = ReactDOM.createRoot(tempDiv);
+      root.render(
+        <HoaDonPDF
+          hoaDon={hoaDons.find(h => h.id === hoaDonId)}
+          sanPhams={sanPhamsMap[hoaDonId] || []}
+          tongTien={calculateTotal(hoaDonId)}
+          tienThue={tienThueMap[hoaDonId] || 0}
+          soDienThoai={soDienThoaiMap[hoaDonId] || ""}
+        />
+      );
+
+      // 3. Đợi render hoàn tất
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 4. Chụp ảnh và tạo PDF
+      const canvas = await html2canvas(tempDiv, {
         scale: 2,
+        logging: true,
         useCORS: true,
-        backgroundColor: '#fff',
-        logging: true // Bật logging để debug
+        backgroundColor: '#ffffff'
       });
 
-      // Ẩn lại phần tử sau khi chụp
-      printRef.style.visibility = 'hidden';
-
-      const dataUrl = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/png');
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const imgProps = pdf.getImageProperties(dataUrl);
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      const blobUrl = pdf.output('bloburl');
-      window.open(blobUrl, '_blank');
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+      // 5. Hiển thị PDF
+      const pdfUrl = pdf.output('bloburl');
+      window.open(pdfUrl, '_blank');
+
+      // 6. Dọn dẹp
+      root.unmount();
+      document.body.removeChild(tempDiv);
+
     } catch (error) {
-      console.error('Lỗi tạo PDF:', error);
-      alert('Lỗi khi tạo PDF: ' + error.message);
+      console.error('Lỗi chi tiết:', error);
+      toast.error(`Lỗi khi tạo PDF: ${error.message}`);
     }
   };
-
 
   const handleUpdateProduct = async (sp, hoaDonId) => {
     if (!sp.soLuong || isNaN(sp.soLuong) || Number(sp.soLuong) <= 0) return;
@@ -392,6 +417,7 @@ const CounterSales = () => {
 
 
   const handleDeleteProduct = async (sp, hoaDonId) => {
+
     const result = await Swal.fire({
       title: "Xác nhận xoá sản phẩm",
       text: "Bạn có chắc chắn muốn xoá sản phẩm này không?",
@@ -403,10 +429,6 @@ const CounterSales = () => {
       cancelButtonText: "Hủy",
     });
     if (result.isConfirmed) {
-      if (sanPhamGiaThayDoiMap[sp.id]) {
-        toast.warning('Sản phẩm này có giá thay đổi, chỉ được xóa!');
-        return;
-      }
       if (!sp.id) {
         toast.error('Không thể xoá sản phẩm không hợp lệ!');
         return;
@@ -417,7 +439,7 @@ const CounterSales = () => {
         const list = result.content || [];
         setSanPhamsMap(prev => ({ ...prev, [hoaDonId]: list }));
         setConnectError(false);
-        toast.success('Xoá sản phẩm thành công!');
+        toast.success("Xoá sản phẩm thành công!", { autoClose: 2000 });
       } catch (err) {
         toast.error('Xoá sản phẩm thất bại: ' + err.message);
         setConnectError(true);
@@ -743,6 +765,7 @@ const CounterSales = () => {
 
                 <div className="col-md-4">
                   <Client
+                    ref={clientRef}
                     hoaDonId={hd.id}
                     khachHangMap={khachHangMap}
                     showSearchInput={showSearchInput}
@@ -773,6 +796,7 @@ const CounterSales = () => {
                     setSoDienThoai={soDienThoai =>
                       setSoDienThoaiMap(prev => ({ ...prev, [hd.id]: soDienThoai }))
                     }
+
 
                   />
 
@@ -870,26 +894,28 @@ const CounterSales = () => {
                     >
                       Xác nhận đơn hàng
                     </button>
-                    <div style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      visibility: 'hidden',
-                      width: '210mm', // Kích thước A4
-                      height: '297mm'
-                    }}>
-                      {hoaDons.map(hd => (
-                        <HoaDonPDFExport
-                          key={hd.id}
-                          ref={el => (hoaDonRefs.current[hd.id] = el)}
-                          hoaDon={hd}
-                          sanPhams={sanPhamsMap[hd.id] || []}
-                          tongTien={calculateTotal(hd.id)}
-                          tienThue={tienThueMap[hd.id] || 0}
-                          soDienThoai={soDienThoaiMap[hd.id] || ""}
-                        />
-                      ))}
-                    </div>
+                    {showPdfPreview && (
+                      <div style={{ position: 'fixed', top: 0, left: 0, zIndex: 9999 }}>
+                        <React.Suspense fallback={<div>Đang tải hóa đơn...</div>}>
+                          {hoaDons.map(hd => (
+                            <HoaDonPDFExport
+                              key={`pdf-${hd.id}`}
+                              ref={el => {
+                                if (el) {
+                                  hoaDonRefs.current[hd.id] = el;
+                                  console.log(`Đã gán ref cho ${hd.id}`, el);
+                                }
+                              }}
+                              hoaDon={hd}
+                              sanPhams={sanPhamsMap[hd.id] || []}
+                              tongTien={calculateTotal(hd.id)}
+                              tienThue={tienThueMap[hd.id] || 0}
+                              soDienThoai={soDienThoaiMap[hd.id] || ""}
+                            />
+                          ))}
+                        </React.Suspense>
+                      </div>
+                    )}
                     {showVnpayQR && vnpayUrl && (
                       <div
                         style={{
@@ -1061,7 +1087,7 @@ const CounterSales = () => {
           </div>
         </div>
       )}
-      <ToastContainer />
+
     </div>
   );
 
