@@ -228,7 +228,17 @@ export const getHoaDonByNgayBatDauVaKetThucT = async (startDate, endDate) => {
 //Hàm gọi API xoas hóa đơn theo id
 export const deleteHD = async (id) => {
     try {
-        const response = await axiosInstance.put(`/delete/${id}`);
+        const token = Cookies.get("adminToken");
+        if (!token) {
+            throw new Error("Token không tồn tại trong cookie. Vui lòng đăng nhập lại.");
+        }
+        const response = await apiClient.put(`/delete/${id}`, {}, {            
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
+            }
+        );
         return response.data;
     } catch (error) {
         console.error('Lỗi khi xoá hóa đơn:', error);

@@ -260,7 +260,30 @@ const Client = forwardRef(({
             setLoading(false);
         }
     };
-    const handleReload = () => {
+    const handleReload = (targetHoaDonId = hoaDonId) => {
+        setShowSearchInput(true);
+        setSearchSdt('');
+        setDaXacNhanState(false);
+
+        // Xóa dữ liệu theo targetHoaDonId
+        localStorage.removeItem(`selectedCustomer-${targetHoaDonId}`);
+        localStorage.removeItem(`daXacNhan-${targetHoaDonId}`);
+        localStorage.removeItem(`diaChiNhanId-${targetHoaDonId}`);
+        localStorage.removeItem(`hinhThucNhanHang-${targetHoaDonId}`);
+
+        if (typeof setKhachHangMap === 'function') {
+            setKhachHangMap(prevMap => ({
+                ...prevMap,
+                [targetHoaDonId]: null
+            }));
+        }
+    };
+
+    useImperativeHandle(ref, () => ({
+        reloadClient: (targetHoaDonId) => handleReload(targetHoaDonId)
+    }));
+
+    const handleReloadUS = () => {
         setShowSearchInput(true);
         setSearchSdt('');
         setDaXacNhanState(false);
@@ -287,10 +310,6 @@ const Client = forwardRef(({
             }));
         }
     };
-
-    useImperativeHandle(ref, () => ({
-        reloadClient: handleReload
-    }));
 
     const handleDiaChiChange = (dc, index) => {
         setDiaChiNhanId(dc.id || index);
@@ -504,7 +523,7 @@ const Client = forwardRef(({
                     <div className="alert alert-info py-2 px-3 mb-2">
                         <div className="d-flex justify-content-between align-items-start">
                             <h6 className="fw-bold mb-1">{khachHang.hoTen}</h6>
-                            <button className="btn btn-sm btn-outline-danger" title="Chọn lại khách hàng" onClick={handleReload}>
+                            <button className="btn btn-sm btn-outline-danger" title="Chọn lại khách hàng" onClick={handleReloadUS}>
                                 <FontAwesomeIcon icon={faSyncAlt} />
                             </button>
                         </div>

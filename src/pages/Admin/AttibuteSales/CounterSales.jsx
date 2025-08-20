@@ -129,7 +129,6 @@ const CounterSales = () => {
   const [soDienThoaiMap, setSoDienThoaiMap] = useState({});
   const [tienThueMap, setTienThueMap] = useState({});
   const [showPdfPreview, setShowPdfPreview] = useState(false);
-
   const clientRef = useRef(null);
 
   if (typeof document !== "undefined" && !document.getElementById("dashboard-style")) {
@@ -220,6 +219,16 @@ const CounterSales = () => {
       setHoaDons(prev => [...prev, newHoaDon]);
       setSanPhamsMap(prev => ({ ...prev, [newHoaDon.id]: [] }));
       setActiveTab(newHoaDon.id);
+
+      localStorage.removeItem(`selectedCustomer-${newHoaDon.id}`);
+      localStorage.removeItem(`daXacNhan-${newHoaDon.id}`);
+      localStorage.removeItem(`diaChiNhanId-${newHoaDon.id}`);
+      localStorage.removeItem(`hinhThucNhanHang-${newHoaDon.id}`);
+
+      // gọi reload UI
+      if (clientRef.current) {
+        clientRef.current.reloadClient(newHoaDon.id);
+      }
       setConnectError(false);
       toast.success('Tạo đơn hàng thành công!');
     } catch (error) {
@@ -252,6 +261,11 @@ const CounterSales = () => {
       );
 
       const newSoLuong = (existed?.soLuong || 0) + soLuongNhap;
+
+      if (newSoLuong > sanPhamFromAPI.soLuong) {
+        toast.error(`Sản phẩm chỉ còn ${sanPhamFromAPI.soLuong} sản phẩm trong kho!`);
+        return;
+      }
 
       if (newSoLuong > 20) {
         toast.warning('Mỗi sản phẩm chỉ được thêm tối đa 20 sản phẩm!');
@@ -1090,10 +1104,30 @@ const CounterSales = () => {
                 <p><strong>{selectedProduct.tenSanPham || selectedProduct.ten}</strong></p>
                 <p>Giá: {(selectedProduct.giaBan || selectedProduct.gia)?.toLocaleString()} ₫</p>
                 <p>Số lượng còn trong kho: {selectedProduct.soLuong}</p>
-                <input type="number" min="1" max={selectedProduct.soLuong}
+                <input
+                  type="number"
+                  min="1"
+                  max={selectedProduct.soLuong}
                   className="form-control"
-                  value={soLuongNhap}
-                  onChange={e => setSoLuongNhap(Number(e.target.value))}
+                  value={soLuongNhap === null ? "" : soLuongNhap}   // nếu null thì hiển thị trống
+                  onChange={e => {
+                    let value = e.target.value;
+                    // Nếu xoá hết input
+                    if (value === "") {
+                      setSoLuongNhap(null); // giữ trống, không ép về 0
+                      return;
+                    }
+                    const numValue = Number(value);
+
+                    // // Ràng buộc min/max
+                    if (numValue < 1) {
+                      setSoLuongNhap(1);
+                      // } else if (numValue > selectedProduct.soLuong) {
+                      //   setSoLuongNhap(selectedProduct.soLuong);
+                    } else {
+                      setSoLuongNhap(numValue);
+                    }
+                  }}
                 />
               </div>
               <div className="modal-footer">
