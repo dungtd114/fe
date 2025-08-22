@@ -91,10 +91,10 @@ export const getHoaDonByMa = async (ma) => {
 };
 
 // Hàm gọi API update Khach Hang
-export const updateHDCTWithKH = async (hoaDonId, khachHangId, hinhThucNhanHang = 0, diaChiNhanId = null) => {
+export const updateHDCTWithKH = async (hoaDonId, khachHangId, hinhThucNhanHang = 0, diaChiNhanId = null, tienThue = 0) => {
     try {
         const token = Cookies.get("adminToken");
-        if (!token) {   
+        if (!token) {
             throw new Error("Token không tồn tại trong cookie. Vui lòng đăng nhập lại.");
         }
         const response = await apiClient.put(
@@ -102,7 +102,8 @@ export const updateHDCTWithKH = async (hoaDonId, khachHangId, hinhThucNhanHang =
             {
                 khachHangId,
                 hinhThucNhanHang,
-                diaChiNhanId
+                diaChiNhanId,
+                tienThue
             },
             {
                 headers: {
@@ -232,12 +233,12 @@ export const deleteHD = async (id) => {
         if (!token) {
             throw new Error("Token không tồn tại trong cookie. Vui lòng đăng nhập lại.");
         }
-        const response = await apiClient.put(`/delete/${id}`, {}, {            
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`,
-                },
-            }
+        const response = await apiClient.put(`/delete/${id}`, {}, {
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`,
+            },
+        }
         );
         return response.data;
     } catch (error) {
