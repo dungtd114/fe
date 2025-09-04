@@ -34,7 +34,6 @@ const HoaDonAdminList = () => {
 
   const navigate = useNavigate();
 
-  // Hàm lấy danh sách hóa đơn từ API
   const fetchHoaDons = async (pageNum = 1, filters = {}) => {
     try {
       setLoading(true);
@@ -47,9 +46,13 @@ const HoaDonAdminList = () => {
       // Đảm bảo hoaDons luôn là mảng, ngay cả khi API trả về null
       setHoaDons(res.content ? res.content : []);
       setTotalPages(res.totalPages || 1);
-    } catch (err) {
-      console.error("Lỗi khi tải danh sách hóa đơn:", err);
-      setHoaDons([]); // Đặt mảng rỗng khi có lỗi
+    } catch (error) {
+      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        navigate("/access-denied");
+      } else {
+        console.error("Lỗi khi tải danh sách hóa đơn:", error);
+        setHoaDons([]); // Đặt mảng rỗng khi có lỗi
+      }
     } finally {
       setLoading(false);
     }
@@ -162,14 +165,14 @@ const HoaDonAdminList = () => {
           renderValue={(selected) => {
             if (!selected) return "Phương thức thanh toán";
             return selected === "1" ? "Ship COD" :
-                   selected === "2" ? "Tại quầy" :
-                   selected === "3" ? "Online" : "Không xác định";
+              selected === "2" ? "Tại quầy" :
+                selected === "3" ? "Online" : "Không xác định";
           }}
         >
           <MenuItem value="">Tất cả</MenuItem>
           <MenuItem value="1">Ship cod</MenuItem>
           <MenuItem value="2">Tại quầy</MenuItem>
-          <MenuItem value="3">Online</MenuItem>
+          <MenuItem value="3">VNP</MenuItem>
         </Select>
 
         <IconButton
@@ -187,7 +190,6 @@ const HoaDonAdminList = () => {
         <Tab label="Đang giao hàng" value="2" />
         <Tab label="Đã hoàn thành" value="3" />
         <Tab label="Đã hủy" value="4" />
-        <Tab label="Đã hoàn trả" value="5" />
       </Tabs>
 
       {loading ? (
@@ -205,78 +207,88 @@ const HoaDonAdminList = () => {
                 <th>Sdt khách</th>
                 <th>Số lượng SP</th>
                 <th>Ngày đặt</th>
-                
+
                 <th>Trạng thái</th>
                 <th>Trạng thái thanh toán</th>
+                <th>Loại đơn</th>
                 <th>Tổng tiền</th>
+
                 <th>Hành động</th>
               </tr>
             </thead>
             <tbody>
               {hoaDons.length > 0 ? (
-                hoaDons.map((hoaDon, index) => (
-                  <tr key={hoaDon.id}>
-                    <td>{(page - 1) * 5 + index + 1}</td>
-                    <td>{hoaDon.ma || "N/A"}</td>
-                    <td>{hoaDon.nguoiNhanHang || "N/A"}</td>
-                    <td>{hoaDon.soDtNguoiNhan || "N/A"}</td>
-                    <td>{hoaDon.tongSoLuongSp || 0}</td>
-                    <td>{hoaDon.ngayDat ? new Date(hoaDon.ngayDat).toLocaleDateString("vi-VN") : "N/A"}</td>
-                    
-                    <td>
-                      <span
-                        style={{
-                          padding: "4px 10px",
-                          borderRadius: 12,
-                          fontSize: "0.85rem",
-                          fontWeight: 500,
-                          backgroundColor:
-                            hoaDon.trangThai === 0 ? "#f8d7da" :
-                            hoaDon.trangThai === 1 ? "#fff3cd" :
-                            hoaDon.trangThai === 2 ? "#cfe2ff" :
-                            hoaDon.trangThai === 3 ? "#d1e7dd" :
-                            hoaDon.trangThai === 4 ? "#e2e3e5" :
-                            hoaDon.trangThai === 5 ? "#d3d3d3" : "#f8d7da",
-                          color:
-                            hoaDon.trangThai === 0 ? "#842029" :
-                            hoaDon.trangThai === 1 ? "#664d03" :
-                            hoaDon.trangThai === 2 ? "#084298" :
-                            hoaDon.trangThai === 3 ? "#0f5132" :
-                            hoaDon.trangThai === 4 ? "#383d41" :
-                            hoaDon.trangThai === 5 ? "#343a40" : "#842029",
-                        }}
-                      >
-                        {hoaDon.trangThai === 0 ? "Chờ xác nhận" :
-                         hoaDon.trangThai === 1 ? "Chờ lấy hàng" :
-                         hoaDon.trangThai === 2 ? "Đang giao hàng" :
-                         hoaDon.trangThai === 3 ? "Đã hoàn thành" :
-                         hoaDon.trangThai === 4 ? "Đã hủy" :
-                         hoaDon.trangThai === 6 ? "Hoá đơn chờ" :
-                         hoaDon.trangThai === 5 ? "Đã hoàn trả" : "Không xác định"}
-                      </span>
-                    </td>
-                    <td>
-                      {hoaDon.trangThaiThanhToan === 0 ? "Chưa thanh toán" : hoaDon.trangThaiThanhToan === 1 ? "Đã thanh toán" : "N/A"}
-                    </td>
-                    
-                    <td style={{ color: "#d10404ff", fontWeight: 600 }}>
-                      {(hoaDon.tongTien + (hoaDon.tienThue || 0)).toLocaleString()}₫
-                    </td>
-                    
-                    <td>
-                      <button
-                        className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"
-                        onClick={() =>
-                          navigate(`/admin/hoa-don/chi-tiet-hoa-don/${hoaDon.id}`, {
-                            state: { trangThaiDonHang: hoaDon.trangThai },
-                          })
-                        }
-                      >
-                        <i className="bi bi-eye-fill me-1"></i> Xem
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                hoaDons
+                  .filter((hoaDon) => hoaDon.trangThai !== 6)
+                  .map((hoaDon, index) => (
+                    <tr key={hoaDon.id}>
+                      <td>{(page - 1) * 5 + index + 1}</td>
+                      <td>{hoaDon.ma || "N/A"}</td>
+                      <td>{hoaDon.nguoiNhanHang || "N/A"}</td>
+                      <td>{hoaDon.soDtNguoiNhan || "N/A"}</td>
+                      <td>{hoaDon.tongSoLuongSp || 0}</td>
+                      <td>{hoaDon.ngayDat ? new Date(hoaDon.ngayDat).toLocaleDateString("vi-VN") : "N/A"}</td>
+
+                      <td>
+                        <span
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: 12,
+                            fontSize: "0.85rem",
+                            fontWeight: 500,
+                            backgroundColor:
+                              hoaDon.trangThai === 0 ? "#f8d7da" :
+                                hoaDon.trangThai === 1 ? "#fff3cd" :
+                                  hoaDon.trangThai === 2 ? "#cfe2ff" :
+                                    hoaDon.trangThai === 3 ? "#d1e7dd" :
+                                      hoaDon.trangThai === 4 ? "#e2e3e5" :
+                                        hoaDon.trangThai === 5 ? "#d3d3d3" : "#f8d7da",
+                            color:
+                              hoaDon.trangThai === 0 ? "#842029" :
+                                hoaDon.trangThai === 1 ? "#664d03" :
+                                  hoaDon.trangThai === 2 ? "#084298" :
+                                    hoaDon.trangThai === 3 ? "#0f5132" :
+                                      hoaDon.trangThai === 4 ? "#383d41" :
+                                        hoaDon.trangThai === 5 ? "#343a40" : "#842029",
+                          }}
+                        >
+                          {hoaDon.trangThai === 0 ? "Chờ xác nhận" :
+                            hoaDon.trangThai === 1 ? "Chờ lấy hàng" :
+                              hoaDon.trangThai === 2 ? "Đang giao hàng" :
+                                hoaDon.trangThai === 3 ? "Đã hoàn thành" :
+                                  hoaDon.trangThai === 4 ? "Đã hủy" :
+                                    hoaDon.trangThai === 6 ? "Hoá đơn chờ" :
+                                      hoaDon.trangThai === 5 ? "Đã hoàn trả" : "Không xác định"}
+                        </span>
+                      </td>
+                      <td>
+                        {hoaDon.trangThaiThanhToan === 0 ? "Chưa thanh toán" : hoaDon.trangThaiThanhToan === 1 ? "Đã thanh toán" : "N/A"}
+                      </td>
+                      <td>
+                        <td>{hoaDon.idPtTT == 2 ? 'Tại quầy' : 'Online'}</td>
+
+                      </td>
+
+                      <td style={{ color: "#d10404ff", fontWeight: 600 }}>
+                        {(hoaDon.tongTien + (hoaDon.tienThue || 0)).toLocaleString()}₫
+                      </td>
+
+
+                      <td>
+                        <button
+                          className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"
+                          onClick={() =>
+                            navigate(`/admin/hoa-don/chi-tiet-hoa-don/${hoaDon.id}`, {
+                              state: { trangThaiDonHang: hoaDon.trangThai },
+                            })
+                          }
+                        >
+                          <i className="bi bi-eye-fill me-1"></i> Xem
+                        </button>
+                      </td>
+
+                    </tr>
+                  ))
               ) : (
                 <tr>
                   <td colSpan="12" className="text-muted py-4">
