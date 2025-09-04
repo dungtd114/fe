@@ -265,7 +265,10 @@ const HoaDonAdminList = () => {
                         {hoaDon.trangThaiThanhToan === 0 ? "Chưa thanh toán" : hoaDon.trangThaiThanhToan === 1 ? "Đã thanh toán" : "N/A"}
                       </td>
                       <td>
-                        <td>{hoaDon.idPtTT == 2 ? 'Tại quầy' : 'Online'}</td>
+                        <div>
+                          <span>{hoaDon.idPtTT == 2 ? 'Tại quầy' : 'Online'}</span>
+                        </div>
+                        {/* <td>{hoaDon.idPtTT == 2 ? 'Tại quầy' : 'Online'}</td> */}
 
                       </td>
 
